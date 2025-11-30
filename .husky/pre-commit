@@ -1,4 +1,7 @@
 bunx lint-staged
 
+# Run type checking on the whole project
+bun run type-check
+
 # Run unit tests to ensure nothing is broken
 bun run test
