@@ -58,104 +58,104 @@ jobs:
           # DOTENV_PRIVATE_KEY_CI is optional - if not set in secrets, it should be configured on the server
           DOTENV_PRIVATE_KEY_CI: ${{ secrets.DOTENV_PRIVATE_KEY_CI || '' }}
         run: |
-            dotenvx run -- ssh ${LINODE_USER}@${LINODE_HOST} "DEPLOY_PATH='${DEPLOY_PATH}' NEXTAUTH_SECRET='${NEXTAUTH_SECRET}' DISCORD_CLIENT_ID='${DISCORD_CLIENT_ID}' DISCORD_CLIENT_SECRET='${DISCORD_CLIENT_SECRET}' ALLOWED_DISCORD_USER_ID='${ALLOWED_DISCORD_USER_ID}' DOTENV_PRIVATE_KEY_CI='${DOTENV_PRIVATE_KEY_CI}' bash -s" << 'EOF'
-            set -e
+          dotenvx run -- ssh ${LINODE_USER}@${LINODE_HOST} "DEPLOY_PATH='${DEPLOY_PATH}' NEXTAUTH_SECRET='${NEXTAUTH_SECRET}' DISCORD_CLIENT_ID='${DISCORD_CLIENT_ID}' DISCORD_CLIENT_SECRET='${DISCORD_CLIENT_SECRET}' ALLOWED_DISCORD_USER_ID='${ALLOWED_DISCORD_USER_ID}' DOTENV_PRIVATE_KEY_CI='${DOTENV_PRIVATE_KEY_CI}' bash -s" << 'EOF'
+          set -e
 
-            echo "📦 Starting deployment to ${DEPLOY_PATH}..."
+          echo "📦 Starting deployment to ${DEPLOY_PATH}..."
 
-            # Navigate to deployment directory
-            cd "${DEPLOY_PATH}"
+          # Navigate to deployment directory
+          cd "${DEPLOY_PATH}"
 
-            # Pull latest changes
-            echo "🔄 Pulling latest changes..."
-            git fetch origin
-            git checkout main
-            git pull origin main
+          # Pull latest changes
+          echo "🔄 Pulling latest changes..."
+          git fetch origin
+          git checkout main
+          git pull origin main
 
-            # 🧠 Make sure bun is available in PATH
-            if [ -d "$HOME/.bun" ]; then
-              export BUN_INSTALL="$HOME/.bun"
-              export PATH="$BUN_INSTALL/bin:$PATH"
+          # 🧠 Make sure bun is available in PATH
+          if [ -d "$HOME/.bun" ]; then
+            export BUN_INSTALL="$HOME/.bun"
+            export PATH="$BUN_INSTALL/bin:$PATH"
+          fi
+
+          # Also check common installation paths
+          if ! command -v bun &> /dev/null; then
+            if [ -f "/usr/local/bin/bun" ]; then
+              export PATH="/usr/local/bin:$PATH"
+            elif [ -f "/usr/bin/bun" ]; then
+              export PATH="/usr/bin:$PATH"
             fi
+          fi
 
-            # Also check common installation paths
-            if ! command -v bun &> /dev/null; then
-              if [ -f "/usr/local/bin/bun" ]; then
-                export PATH="/usr/local/bin:$PATH"
-              elif [ -f "/usr/bin/bun" ]; then
-                export PATH="/usr/bin:$PATH"
-              fi
-            fi
+          # 🧠 Make sure Node & PM2 are available
+          export NVM_DIR="$HOME/.nvm"
+          [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
 
-            # 🧠 Make sure Node & PM2 are available
-            export NVM_DIR="$HOME/.nvm"
-            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+          # Verify bun is available
+          if ! command -v bun &> /dev/null; then
+            echo "❌ Error: bun is not found in PATH"
+            echo "Current PATH: $PATH"
+            echo "Checking common locations..."
+            ls -la ~/.bun/bin/bun 2>/dev/null || echo "~/.bun/bin/bun not found"
+            ls -la /usr/local/bin/bun 2>/dev/null || echo "/usr/local/bin/bun not found"
+            ls -la /usr/bin/bun 2>/dev/null || echo "/usr/bin/bun not found"
+            exit 1
+          fi
+          echo "✅ Found bun at: $(which bun)"
+          bun --version
 
-            # Verify bun is available
-            if ! command -v bun &> /dev/null; then
-              echo "❌ Error: bun is not found in PATH"
-              echo "Current PATH: $PATH"
-              echo "Checking common locations..."
-              ls -la ~/.bun/bin/bun 2>/dev/null || echo "~/.bun/bin/bun not found"
-              ls -la /usr/local/bin/bun 2>/dev/null || echo "/usr/local/bin/bun not found"
-              ls -la /usr/bin/bun 2>/dev/null || echo "/usr/bin/bun not found"
-              exit 1
-            fi
-            echo "✅ Found bun at: $(which bun)"
-            bun --version
+          # Install dependencies
+          echo "📚 Installing dependencies..."
+          bun install --frozen-lockfile
 
-            # Install dependencies
-            echo "📚 Installing dependencies..."
-            bun install --frozen-lockfile
+          # Build Next.js application
+          echo "🏗️  Building Next.js application..."
+          bun run build
 
-            # Build Next.js application
-            echo "🏗️  Building Next.js application..."
-            bun run build
+          # Export environment variables for PM2
+          # These will be available to the Next.js application
+          export NEXTAUTH_SECRET="${NEXTAUTH_SECRET}"
+          export DISCORD_CLIENT_ID="${DISCORD_CLIENT_ID}"
+          export DISCORD_CLIENT_SECRET="${DISCORD_CLIENT_SECRET}"
+          export ALLOWED_DISCORD_USER_ID="${ALLOWED_DISCORD_USER_ID}"
 
-            # Export environment variables for PM2
-            # These will be available to the Next.js application
-            export NEXTAUTH_SECRET="${NEXTAUTH_SECRET}"
-            export DISCORD_CLIENT_ID="${DISCORD_CLIENT_ID}"
-            export DISCORD_CLIENT_SECRET="${DISCORD_CLIENT_SECRET}"
-            export ALLOWED_DISCORD_USER_ID="${ALLOWED_DISCORD_USER_ID}"
-            
-            # DOTENV_KEY is optional - for dotenv-vault support
-            # If provided, it will be used to decrypt .env.vault files
-            if [ -n "${DOTENV_KEY:-}" ]; then
-              export DOTENV_KEY="${DOTENV_KEY}"
-              echo "✅ DOTENV_KEY provided (from GitHub secret or server environment)"
-            else
-              echo "ℹ️  DOTENV_KEY not provided - using direct GitHub secrets instead"
-            fi
-            
-            echo "✅ Environment variables exported for PM2"
+          # DOTENV_KEY is optional - for dotenv-vault support
+          # If provided, it will be used to decrypt .env.vault files
+          if [ -n "${DOTENV_KEY:-}" ]; then
+            export DOTENV_KEY="${DOTENV_KEY}"
+            echo "✅ DOTENV_KEY provided (from GitHub secret or server environment)"
+          else
+            echo "ℹ️  DOTENV_KEY not provided - using direct GitHub secrets instead"
+          fi
 
-            # Restart the service with PM2
-            # PM2 will inherit all exported environment variables when it starts
-            echo "🔄 Restarting application..."
-            pm2 reload ecosystem.prod.config.js || pm2 start ecosystem.prod.config.js
+          echo "✅ Environment variables exported for PM2"
 
-            # Wait for health check
-            echo "⏳ Waiting for application to start..."
-            sleep 10
+          # Restart the service with PM2
+          # PM2 will inherit all exported environment variables when it starts
+          echo "🔄 Restarting application..."
+          pm2 reload ecosystem.prod.config.js || pm2 start ecosystem.prod.config.js
 
-            # Check status
-            echo "✅ Checking application status..."
-            pm2 status
-            
-            # Check site status
-            pm2 describe nightscout-backup-site || echo "⚠️  Site process not found"
-            pm2 logs nightscout-backup-site --lines 20 --nostream || true
-            
-            # Test Next.js site health endpoint
-            echo "🏥 Testing Next.js site endpoint..."
-            if curl -f -s http://localhost:3000 > /dev/null; then
-              echo "✅ Next.js site health check passed"
-            else
-              echo "⚠️  Next.js site health check failed (may still be starting)"
-            fi
+          # Wait for health check
+          echo "⏳ Waiting for application to start..."
+          sleep 10
 
-            echo "✅ Deployment complete!"
+          # Check status
+          echo "✅ Checking application status..."
+          pm2 status
+
+          # Check site status
+          pm2 describe nightscout-backup-site || echo "⚠️  Site process not found"
+          pm2 logs nightscout-backup-site --lines 20 --nostream || true
+
+          # Test Next.js site health endpoint
+          echo "🏥 Testing Next.js site endpoint..."
+          if curl -f -s http://localhost:3000 > /dev/null; then
+            echo "✅ Next.js site health check passed"
+          else
+            echo "⚠️  Next.js site health check failed (may still be starting)"
+          fi
+
+          echo "✅ Deployment complete!"
           EOF
 
       - name: Verify Deployment
@@ -201,7 +201,7 @@ jobs:
             fi
 
             echo "✅ Application is running"
-          EOF
+            EOF
 
       - name: Notify on Success
         if: success()
