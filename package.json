@@ -1,11 +1,13 @@
 {
   "name": "nightscout-mongo-backup-site",
   "private": true,
-  "version": "1.0.3",
+  "version": "1.0.4",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "start:pm2": "dotenvx run -- pm2-runtime start ecosystem.prod.config.js",
+    "restart:pm2": "dotenvx run -- pm2-runtime restart ecosystem.prod.config.js",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "test": "vitest run",

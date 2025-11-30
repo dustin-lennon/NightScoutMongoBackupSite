@@ -133,7 +133,7 @@ jobs:
           # Restart the service with PM2
           # PM2 will inherit all exported environment variables when it starts
           echo "🔄 Restarting application..."
-          pm2 reload ecosystem.prod.config.js || pm2 start ecosystem.prod.config.js
+          bun run restart:pm2 || bun run start:pm2
 
           # Wait for health check
           echo "⏳ Waiting for application to start..."
