@@ -44,7 +44,7 @@ jobs:
             -Dsonar.projectKey=dustin-lennon_NightScoutMongoBackupSite
             -Dsonar.organization=dustin-lennon
             -Dsonar.host.url=https://sonarcloud.io
-            -Dsonar.sources=app,components,middleware.ts
+            -Dsonar.sources=app,components,proxy.ts
             -Dsonar.tests=tests/unit
             -Dsonar.test.inclusions=tests/unit/**/*.{test,spec}.{ts,tsx}
             -Dsonar.exclusions=**/node_modules/**,**/.next/**,**/coverage/**,**/playwright-report/**,**/test-results/**,**/*.config.{ts,js,mjs},**/next-env.d.ts,**/public/**
