@@ -1,0 +1,158 @@
+name: Deploy to Linode
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Deployment environment"
+        required: true
+        default: "production"
+        type: choice
+        options:
+          - production
+          - staging
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - ".github/**"
+      - "!.github/workflows/deploy-linode.yml"
+
+jobs:
+  deploy:
+    name: Deploy to Linode Server
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'production' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.LINODE_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.LINODE_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to Linode
+        env:
+          LINODE_HOST: ${{ secrets.LINODE_HOST }}
+          LINODE_USER: ${{ secrets.LINODE_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH || '/opt/nightscout-backup-site' }}
+        run: |
+          ssh ${LINODE_USER}@${LINODE_HOST} "DEPLOY_PATH='${DEPLOY_PATH}' bash -s" << 'EOF'
+            set -e
+
+            echo "📦 Starting deployment to ${DEPLOY_PATH}..."
+
+            # Navigate to deployment directory
+            cd "${DEPLOY_PATH}"
+
+            # Pull latest changes
+            echo "🔄 Pulling latest changes..."
+            git fetch origin
+            git checkout main
+            git pull origin main
+
+            # Install dependencies
+            echo "📚 Installing dependencies..."
+            bun install --frozen-lockfile
+
+            # Build Next.js application
+            echo "🏗️  Building Next.js application..."
+            bun run build
+
+            # 🧠 Make sure Node & PM2 are available
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+
+            # Restart the service with PM2
+            echo "🔄 Restarting application..."
+            pm2 reload ecosystem.prod.config.js || pm2 start ecosystem.prod.config.js
+
+            # Wait for health check
+            echo "⏳ Waiting for application to start..."
+            sleep 10
+
+            # Check status
+            echo "✅ Checking application status..."
+            pm2 status
+            
+            # Check site status
+            pm2 describe nightscout-backup-site || echo "⚠️  Site process not found"
+            pm2 logs nightscout-backup-site --lines 20 --nostream || true
+            
+            # Test Next.js site health endpoint
+            echo "🏥 Testing Next.js site endpoint..."
+            if curl -f -s http://localhost:3000 > /dev/null; then
+              echo "✅ Next.js site health check passed"
+            else
+              echo "⚠️  Next.js site health check failed (may still be starting)"
+            fi
+
+            echo "✅ Deployment complete!"
+          EOF
+
+      - name: Verify Deployment
+        env:
+          LINODE_HOST: ${{ secrets.LINODE_HOST }}
+          LINODE_USER: ${{ secrets.LINODE_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH || '/opt/nightscout-backup-site' }}
+        run: |
+          ssh ${LINODE_USER}@${LINODE_HOST} "DEPLOY_PATH='${DEPLOY_PATH}' bash -s" << 'EOF'
+            # 🧠 Make sure Node & PM2 are available
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+
+            cd "${DEPLOY_PATH}"
+
+            # Check if site is online
+            if ! pm2 describe nightscout-backup-site &>/dev/null; then
+              echo "❌ Site process not found"
+              exit 1
+            fi
+            
+            # Check process status (using pm2 jlist for reliable JSON parsing)
+            if command -v jq &> /dev/null; then
+              PM2_STATUS=$(pm2 jlist | jq -r '.[] | select(.name=="nightscout-backup-site") | .pm2_env.status' || echo "unknown")
+            else
+              # Fallback: check if process appears in pm2 list
+              PM2_STATUS=$(pm2 list | grep -q "nightscout-backup-site.*online" && echo "online" || echo "unknown")
+            fi
+            
+            if [ "$PM2_STATUS" != "online" ]; then
+              echo "❌ Site process is not online (status: $PM2_STATUS)"
+              pm2 describe nightscout-backup-site
+              exit 1
+            fi
+            echo "✅ Site process is running (status: $PM2_STATUS)"
+            
+            # Test Next.js site endpoint
+            if curl -f -s http://localhost:3000 > /dev/null; then
+              echo "✅ Next.js site is responding"
+            else
+              echo "❌ Next.js site health check failed"
+              exit 1
+            fi
+
+            echo "✅ Application is running"
+          EOF
+
+      - name: Notify on Success
+        if: success()
+        run: |
+          echo "✅ Deployment to ${{ github.event.inputs.environment || 'production' }} successful!"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Commit: ${{ github.sha }}"
+
+      - name: Notify on Failure
+        if: failure()
+        run: |
+          echo "❌ Deployment to ${{ github.event.inputs.environment || 'production' }} failed!"
+          echo "Please check the logs above for details."

@@ -3,6 +3,9 @@
     "next/core-web-vitals",
     "next/typescript"
   ],
+  "ignorePatterns": [
+    "ecosystem*.config.js"
+  ],
   "rules": {
     "@typescript-eslint/no-unused-vars": [
       "warn",
