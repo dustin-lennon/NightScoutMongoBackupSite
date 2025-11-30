@@ -35,8 +35,6 @@ export default defineConfig({
         "playwright/",
         "instrumentation*.ts",
         "middleware.ts",
-        "**/error.tsx",
-        "**/global-error.tsx",
         "**/layout.tsx",
         "**/providers.tsx",
         "**/themes/**",
