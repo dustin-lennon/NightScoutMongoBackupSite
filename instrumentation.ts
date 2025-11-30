@@ -5,14 +5,7 @@
 import * as Sentry from "@sentry/nextjs";
 
 export async function register() {
-  // Load dotenv-vault ONLY in Node.js runtime (not Edge runtime)
-  // This ensures encrypted .env.vault files are decrypted and loaded in production
-  // Edge runtime cannot use Node.js built-in modules, so we must conditionally import
   if (process.env.NEXT_RUNTIME === "nodejs") {
-    // Dynamic import to prevent bundling for Edge runtime
-    // This must be done FIRST before any other code that uses environment variables
-    await import("@dotenvx/dotenvx/config");
-    
     Sentry.init({
       dsn: process.env.SENTRY_DSN,
 
