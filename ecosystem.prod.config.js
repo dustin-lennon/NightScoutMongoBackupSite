@@ -2,6 +2,16 @@
 // 
 // This configuration runs the Next.js production server.
 // Make sure to build the app first: bun run build
+// 
+// Environment variables are passed from the deployment script via shell environment.
+// When PM2 reloads with --update-env, it will merge shell environment variables
+// into the process environment.
+// 
+// Required variables (must be exported in shell before PM2 start/reload):
+// - NEXTAUTH_SECRET
+// - DISCORD_CLIENT_ID
+// - DISCORD_CLIENT_SECRET
+// - ALLOWED_DISCORD_USER_ID
 const path = require('node:path');
 
 module.exports = {
@@ -23,6 +33,8 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         PORT: 3000,
+        // These will be merged from shell environment when using --update-env
+        // Do not set defaults here - they must be provided by the deployment script
       }
     }
   ]

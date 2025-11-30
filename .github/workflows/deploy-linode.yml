@@ -108,21 +108,71 @@ jobs:
 
           # Export environment variables for PM2
           # These will be available to the Next.js application
+          # Variables are passed from GitHub Actions secrets via SSH command
           export NEXTAUTH_SECRET="${NEXTAUTH_SECRET}"
           export DISCORD_CLIENT_ID="${DISCORD_CLIENT_ID}"
           export DISCORD_CLIENT_SECRET="${DISCORD_CLIENT_SECRET}"
           export ALLOWED_DISCORD_USER_ID="${ALLOWED_DISCORD_USER_ID}"
 
           echo "✅ Environment variables exported for PM2"
+          echo "   NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:+[SET]}${NEXTAUTH_SECRET:-[NOT SET]}"
+          echo "   DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID:+[SET]}${DISCORD_CLIENT_ID:-[NOT SET]}"
+          echo "   DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET:+[SET]}${DISCORD_CLIENT_SECRET:-[NOT SET]}"
+          echo "   ALLOWED_DISCORD_USER_ID: ${ALLOWED_DISCORD_USER_ID:+[SET]}${ALLOWED_DISCORD_USER_ID:-[NOT SET]}"
+
+          # Verify variables are actually set (non-empty)
+          if [ -z "${NEXTAUTH_SECRET}" ]; then
+            echo "❌ ERROR: NEXTAUTH_SECRET is not set!"
+            exit 1
+          fi
+          if [ -z "${DISCORD_CLIENT_ID}" ]; then
+            echo "❌ ERROR: DISCORD_CLIENT_ID is not set!"
+            exit 1
+          fi
+          if [ -z "${DISCORD_CLIENT_SECRET}" ]; then
+            echo "❌ ERROR: DISCORD_CLIENT_SECRET is not set!"
+            exit 1
+          fi
+          if [ -z "${ALLOWED_DISCORD_USER_ID}" ]; then
+            echo "❌ ERROR: ALLOWED_DISCORD_USER_ID is not set!"
+            exit 1
+          fi
 
           # Restart the service with PM2
-          # PM2 will inherit all exported environment variables when it starts
+          # Delete and restart to ensure environment variables are picked up
           echo "🔄 Restarting application..."
-          pm2 reload ecosystem.prod.config.js || pm2 start ecosystem.prod.config.js
+          if pm2 describe nightscout-backup-site &>/dev/null; then
+            # Process exists, delete it first to ensure clean restart with new env vars
+            pm2 delete nightscout-backup-site || true
+          fi
+          # Start with current shell environment variables
+          # PM2 will inherit all exported environment variables
+          pm2 start ecosystem.prod.config.js
 
-          # Wait for health check
+          # Wait for application to start
           echo "⏳ Waiting for application to start..."
-          sleep 10
+          sleep 5
+
+          # Verify environment variables are set in PM2 process
+          echo "🔍 Verifying environment variables in PM2 process..."
+          PM2_ENV=$(pm2 env $(pm2 jlist | grep -o '"pm_id":[0-9]*' | head -1 | cut -d: -f2) 2>/dev/null || echo "")
+          if [ -n "$PM2_ENV" ]; then
+            if echo "$PM2_ENV" | grep -q "NEXTAUTH_SECRET"; then
+              echo "✅ NEXTAUTH_SECRET is set in PM2 process"
+            else
+              echo "⚠️  NEXTAUTH_SECRET not found in PM2 process environment"
+            fi
+            if echo "$PM2_ENV" | grep -q "DISCORD_CLIENT_ID"; then
+              echo "✅ DISCORD_CLIENT_ID is set in PM2 process"
+            else
+              echo "⚠️  DISCORD_CLIENT_ID not found in PM2 process environment"
+            fi
+          else
+            echo "⚠️  Could not retrieve PM2 environment (this is okay if process just started)"
+          fi
+
+          # Wait a bit more for full startup
+          sleep 5
 
           # Check status
           echo "✅ Checking application status..."
