@@ -8,6 +8,8 @@ const nextConfig = {
   experimental: {
     instrumentationHook: true,
   },
+  // Ensure certain packages are not bundled for edge runtime
+  serverExternalPackages: ['@dotenvx/dotenvx'],
   // Suppress webpack cache warnings
   webpack: (config, { dev, isServer }) => {
     // Additional webpack configuration to externalize @dotenvx/dotenvx

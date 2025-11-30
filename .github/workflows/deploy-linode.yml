@@ -108,6 +108,13 @@ jobs:
           echo "📚 Installing dependencies..."
           bun install --frozen-lockfile
 
+          # Clean build artifacts to ensure fresh build
+          # This helps prevent edge runtime module conflicts and stale cache issues
+          echo "🧹 Cleaning build artifacts..."
+          rm -rf .next
+          rm -rf node_modules/.cache 2>/dev/null || true
+          echo "✅ Build artifacts cleaned"
+
           # Build Next.js application
           echo "🏗️  Building Next.js application..."
           bun run build
@@ -119,13 +126,13 @@ jobs:
           export DISCORD_CLIENT_SECRET="${DISCORD_CLIENT_SECRET}"
           export ALLOWED_DISCORD_USER_ID="${ALLOWED_DISCORD_USER_ID}"
 
-          # DOTENV_KEY is optional - for dotenv-vault support
+          # DOTENV_PRIVATE_KEY_CI is optional - for dotenv-vault support
           # If provided, it will be used to decrypt .env.vault files
-          if [ -n "${DOTENV_KEY:-}" ]; then
-            export DOTENV_KEY="${DOTENV_KEY}"
-            echo "✅ DOTENV_KEY provided (from GitHub secret or server environment)"
+          if [ -n "${DOTENV_PRIVATE_KEY_CI:-}" ]; then
+            export DOTENV_PRIVATE_KEY_CI="${DOTENV_PRIVATE_KEY_CI}"
+            echo "✅ DOTENV_PRIVATE_KEY_CI provided (from GitHub secret or server environment)"
           else
-            echo "ℹ️  DOTENV_KEY not provided - using direct GitHub secrets instead"
+            echo "ℹ️  DOTENV_PRIVATE_KEY_CI not provided - using direct GitHub secrets instead"
           fi
 
           echo "✅ Environment variables exported for PM2"
@@ -133,7 +140,13 @@ jobs:
           # Restart the service with PM2
           # PM2 will inherit all exported environment variables when it starts
           echo "🔄 Restarting application..."
-          pm2 reload ecosystem.prod.config.js || pm2 start ecosystem.prod.config.js
+
+          # Stop the process first to ensure clean restart
+          pm2 stop nightscout-backup-site 2>/dev/null || true
+          pm2 delete nightscout-backup-site 2>/dev/null || true
+
+          # Start with the ecosystem config
+          pm2 start ecosystem.prod.config.js
 
           # Wait for health check
           echo "⏳ Waiting for application to start..."

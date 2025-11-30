@@ -10,7 +10,16 @@ export async function register() {
   // Edge runtime cannot use Node.js built-in modules, so we must conditionally import
   if (process.env.NEXT_RUNTIME === "nodejs") {
     // Dynamic import to prevent bundling for Edge runtime
-    await import("@dotenvx/dotenvx/config");
+    // Gracefully handle missing .env file (production may use PM2 env vars directly)
+    try {
+      await import("@dotenvx/dotenvx/config");
+    } catch (error) {
+      // In production, environment variables may be passed directly via PM2
+      // Missing .env file is acceptable if all required env vars are set
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[instrumentation] Failed to load dotenvx config:", error);
+      }
+    }
     
     Sentry.init({
       dsn: process.env.SENTRY_DSN,
