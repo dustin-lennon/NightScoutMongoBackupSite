@@ -9,7 +9,25 @@ const nextConfig = {
     instrumentationHook: true,
   },
   // Suppress webpack cache warnings
-  webpack: (config, { dev }) => {
+  webpack: (config, { dev, isServer }) => {
+    // Additional webpack configuration to externalize @dotenvx/dotenvx
+    // This provides a fallback in case serverExternalPackages doesn't cover all cases
+    if (isServer) {
+      const originalExternals = config.externals;
+      config.externals = [
+        ...(Array.isArray(originalExternals) ? originalExternals : []),
+        ({ request }, callback) => {
+          if (request && (request === '@dotenvx/dotenvx' || request.startsWith('@dotenvx/dotenvx/'))) {
+            return callback(null, `commonjs ${request}`);
+          }
+          if (typeof originalExternals === 'function') {
+            return originalExternals({ request }, callback);
+          }
+          callback();
+        },
+      ];
+    }
+    
     if (dev) {
       // Configure webpack to suppress cache strategy warnings
       config.infrastructureLogging = {
