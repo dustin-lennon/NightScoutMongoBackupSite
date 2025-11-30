@@ -2,9 +2,12 @@ node_modules
 .venv
 .env
 .cursor
+.cursorrules
 .next
 coverage
 .nyc_output
 playwright-report
 test-results
 *.log
+.sst
+logs

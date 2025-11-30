@@ -3,7 +3,7 @@ name: CodeQL Analysis
 on:
   workflow_dispatch:
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   analyze:
@@ -23,7 +23,9 @@ jobs:
         with:
           languages: typescript
 
-      # For Python, autobuild is effectively a no-op, but it's fine to keep
+      - name: Install dependencies
+        run: npm ci
+
       - name: Autobuild
         uses: github/codeql-action/autobuild@v4
 

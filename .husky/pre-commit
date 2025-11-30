@@ -1,0 +1,4 @@
+bunx lint-staged
+
+# Run unit tests to ensure nothing is broken
+bun run test
