@@ -4,10 +4,6 @@ import { withSentryConfig } from "@sentry/nextjs";
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // Enable instrumentation hook
-  experimental: {
-    instrumentationHook: true,
-  },
   // Suppress webpack cache warnings
   webpack: (config, { dev }) => {
     if (dev) {

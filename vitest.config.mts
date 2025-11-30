@@ -34,7 +34,7 @@ export default defineConfig({
         ".sst/",
         "playwright/",
         "instrumentation*.ts",
-        "middleware.ts",
+        "proxy.ts",
         "**/layout.tsx",
         "**/providers.tsx",
         "**/themes/**",
