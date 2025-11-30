@@ -2,7 +2,24 @@ import { test, expect } from "@playwright/test";
 
 test.describe("Theme Toggle", () => {
   test.beforeEach(async ({ page }) => {
-    // Mock authentication
+    // Mock NextAuth session endpoint to return authenticated session
+    await page.route("**/api/auth/session", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          user: {
+            name: "Test User",
+            email: "test@example.com",
+            image: "https://example.com/avatar.png",
+            id: "123456789",
+          },
+          expires: "2025-12-31",
+        }),
+      });
+    });
+
+    // Mock authentication by setting a session cookie
     await page.context().addCookies([
       {
         name: "next-auth.session-token",
