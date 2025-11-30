@@ -8,8 +8,8 @@ module.exports = {
   apps: [
     {
       name: 'nightscout-backup-site',
-      script: 'bun',
-      args: 'run start',
+      script: 'sh',
+      args: '-c "export PATH=\"$HOME/.bun/bin:$PATH\" && bunx next start"',
       cwd: path.resolve(__dirname),
       exec_mode: 'fork',
       interpreter: 'none',
