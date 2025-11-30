@@ -2,18 +2,15 @@ import { NextResponse } from "next/server";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-const region = process.env.AWS_REGION;
-const bucket = process.env.BACKUP_S3_BUCKET;
-
-const s3Client = new S3Client(
-  region
-    ? {
-        region
-      }
-    : {}
-);
+// AWS SDK will automatically detect the region from the Lambda execution environment
+// Fallback to us-east-2 for local development
+const s3Client = new S3Client({
+  region: process.env.AWS_REGION || "us-east-2",
+});
 
 export async function GET(request: Request) {
+  const bucket = process.env.BACKUP_S3_BUCKET;
+  
   if (!bucket) {
     return NextResponse.json(
       { error: "S3 bucket not configured on server." },

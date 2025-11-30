@@ -60,5 +60,55 @@ describe("POST /api/backups/create", () => {
     expect(response.status).toBe(500);
     expect(data.error).toContain("Failed to connect to backup service");
   });
+
+  it("returns 500 when backup reports failure", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: false,
+      }),
+    } as Response);
+
+    const response = await POST();
+    const data = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(data.error).toContain("Backup completed but reported failure");
+  });
+
+  it("uses relative URL when PYTHON_BACKUP_API_URL is not set", async () => {
+    // Reset modules to test with no PYTHON_BACKUP_API_URL
+    vi.resetModules();
+    delete process.env.PYTHON_BACKUP_API_URL;
+    
+    // Re-import the route
+    const { POST: POSTWithoutUrl } = await import("@/app/api/backups/create/route");
+    
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        url: "https://s3-url",
+      }),
+    } as Response);
+
+    const response = await POSTWithoutUrl();
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(mockFetch).toHaveBeenCalledWith(
+      "/backup",
+      expect.objectContaining({
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+    );
+    expect(data.url).toBe("https://s3-url");
+    
+    // Restore for other tests
+    process.env.PYTHON_BACKUP_API_URL = "http://localhost:8000";
+  });
 });
 

@@ -2,30 +2,18 @@ import { NextResponse } from "next/server";
 import { S3Client, ListObjectsV2Command } from "@aws-sdk/client-s3";
 
 // This route runs on the server (Node.js runtime) and must never expose any
-// credentials to the client. It uses the standard AWS credential provider
-// chain (env vars, shared config/credentials files, or IAM role).
+// credentials to the client. It uses the existing S3 bucket configured via environment variables.
 
-const region = process.env.AWS_REGION;
-const bucket = process.env.BACKUP_S3_BUCKET;
-const prefix = process.env.BACKUP_S3_PREFIX; // optional, e.g. "nightscout/"
-
-if (!bucket) {
-  // Fail fast during development if not configured.
-  // In production this will be logged server-side.
-  console.warn(
-    "[backups/list] BACKUP_S3_BUCKET is not set; list endpoint will return 500."
-  );
-}
-
-const s3Client = new S3Client(
-  region
-    ? {
-        region
-      }
-    : {}
-);
+// AWS SDK will automatically detect the region from the Lambda execution environment
+// Fallback to us-east-2 for local development
+const s3Client = new S3Client({
+  region: process.env.AWS_REGION || "us-east-2",
+});
 
 export async function GET() {
+  const bucket = process.env.BACKUP_S3_BUCKET;
+  const prefix = process.env.BACKUP_S3_PREFIX || "backups/"; // optional, e.g. "nightscout/"
+  
   if (!bucket) {
     return NextResponse.json(
       { error: "S3 bucket not configured on server." },

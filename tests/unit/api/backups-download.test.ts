@@ -51,24 +51,25 @@ describe("GET /api/backups/download", () => {
   });
 
   it("returns 500 when bucket is not configured", async () => {
-    // Since bucket is set in setup.ts and the module reads it at load time,
-    // we can't easily test the "not configured" case without vi.resetModules().
-    // Instead, we'll test error handling when signing fails, which exercises
-    // the error path in the route.
+    // Reset modules to test the bucket not configured case
+    vi.resetModules();
+    delete process.env.BACKUP_S3_BUCKET;
+    
+    // Re-import the route after clearing the bucket env var
+    const { GET: GETWithoutBucket } = await import("@/app/api/backups/download/route");
+    
     const request = new NextRequest(
       "http://localhost:3000/api/backups/download?key=backups%2Ffile.tar.gz"
     );
     
-    // Mock getSignedUrl to throw to simulate an error
-    (getSignedUrl as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
-      new Error("Signing failed")
-    );
-    
-    const response = await GET(request);
+    const response = await GETWithoutBucket(request);
     const data = await response.json();
     
     expect(response.status).toBe(500);
-    expect(data.error).toContain("Failed to generate download URL");
+    expect(data.error).toContain("S3 bucket not configured");
+    
+    // Restore env var for other tests
+    process.env.BACKUP_S3_BUCKET = "test-bucket";
   });
 
   it("returns 500 when signing fails", async () => {

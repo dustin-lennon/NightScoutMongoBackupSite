@@ -39,11 +39,16 @@ export function TopBar() {
                 onClick={() => setMenuOpen((open) => !open)}
                 className="flex items-center gap-2 rounded-full border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 shadow-sm hover:border-emerald-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
               >
-                <img
-                  src={user.image ?? ""}
-                  alt={user.name ?? "Discord avatar"}
-                  className="h-7 w-7 rounded-full border border-slate-700 object-cover"
-                />
+                {user.image && (
+                  <Image
+                    src={user.image}
+                    alt={user.name ?? "Discord avatar"}
+                    width={28}
+                    height={28}
+                    className="h-7 w-7 rounded-full border border-slate-700 object-cover"
+                    unoptimized
+                  />
+                )}
                 <span className="hidden sm:inline max-w-[140px] truncate">
                   {user.name ?? user.email}
                 </span>

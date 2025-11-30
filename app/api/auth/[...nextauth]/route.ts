@@ -14,7 +14,8 @@ const handler = NextAuth({
   callbacks: {
     async signIn({ profile }) {
       const allowedId = process.env.ALLOWED_DISCORD_USER_ID;
-      const discordId = (profile as any)?.id as string | undefined;
+      // Discord profile type includes an id field
+      const discordId = (profile as { id?: string })?.id;
 
       if (!allowedId) {
         // If not configured yet, block sign-in for safety.
@@ -25,7 +26,8 @@ const handler = NextAuth({
     },
     async session({ session, token }) {
       if (session.user && token.sub) {
-        (session.user as any).id = token.sub;
+        // Extend the user object with id from token
+        (session.user as { id?: string }).id = token.sub;
       }
       return session;
     }

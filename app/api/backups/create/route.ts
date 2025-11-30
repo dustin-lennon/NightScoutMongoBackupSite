@@ -3,11 +3,14 @@ import { NextResponse } from "next/server";
 // This endpoint calls the Python bot's FastAPI server to trigger a backup.
 // The Python bot handles: MongoDB dump -> compression -> S3 upload -> cleanup.
 
-const PYTHON_API_URL = process.env.PYTHON_BACKUP_API_URL || "http://localhost:8000";
+// Use environment variable if set, otherwise use relative URL (for same-domain setup)
+// In production with nginx, use relative URL so requests go through nginx routing
+const PYTHON_API_URL = process.env.PYTHON_BACKUP_API_URL || "";
 
 export async function POST() {
   try {
-    const response = await fetch(`${PYTHON_API_URL}/backup`, {
+    const fullUrl = PYTHON_API_URL ? `${PYTHON_API_URL}/backup` : "/backup";
+    const response = await fetch(fullUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
