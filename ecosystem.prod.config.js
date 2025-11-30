@@ -8,8 +8,8 @@ module.exports = {
   apps: [
     {
       name: 'nightscout-backup-site',
-      script: 'bun',
-      args: 'run start',
+      script: 'bunx',
+      args: ['next', 'start'],
       cwd: path.resolve(__dirname),
       exec_mode: 'fork',
       instances: 1,
@@ -23,6 +23,13 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         PORT: 3000,
+        // Environment variables are passed from GitHub secrets via deployment script
+        // PM2 will inherit these from the shell environment when started:
+        // - NEXTAUTH_SECRET
+        // - DISCORD_CLIENT_ID
+        // - DISCORD_CLIENT_SECRET
+        // - ALLOWED_DISCORD_USER_ID
+        // - DOTENV_KEY (optional, for dotenv-vault support)
       }
     }
   ]
