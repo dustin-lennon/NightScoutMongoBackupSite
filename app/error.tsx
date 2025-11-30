@@ -3,13 +3,15 @@
 import * as Sentry from "@sentry/nextjs";
 import { useEffect } from "react";
 
-export default function Error({
+type ErrorPageProps = {
+  readonly error: Error & { digest?: string };
+  readonly reset: () => void;
+};
+
+export default function ErrorPage({
   error,
   reset
-}: {
-  error: Error & { digest?: string };
-  reset: () => void;
-}) {
+}: ErrorPageProps) {
   useEffect(() => {
     // Log the error to Sentry
     Sentry.captureException(error);

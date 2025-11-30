@@ -3,20 +3,22 @@
 import * as Sentry from "@sentry/nextjs";
 import { useEffect } from "react";
 
+type GlobalErrorProps = {
+  readonly error: Error & { digest?: string };
+  readonly reset: () => void;
+};
+
 export default function GlobalError({
   error,
   reset
-}: {
-  error: Error & { digest?: string };
-  reset: () => void;
-}) {
+}: GlobalErrorProps) {
   useEffect(() => {
     // Log the error to Sentry
     Sentry.captureException(error);
   }, [error]);
 
   return (
-    <html>
+    <html lang="en">
       <body>
         <div className="flex min-h-screen flex-col items-center justify-center px-4">
           <div className="w-full max-w-md space-y-4 rounded-lg border border-red-500/40 bg-red-950/40 p-6">
