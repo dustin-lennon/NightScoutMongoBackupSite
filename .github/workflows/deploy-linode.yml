@@ -65,6 +65,7 @@ jobs:
               export BUN_INSTALL="$HOME/.bun"
               export PATH="$BUN_INSTALL/bin:$PATH"
             fi
+
             # Also check common installation paths
             if ! command -v bun &> /dev/null; then
               if [ -f "/usr/local/bin/bun" ]; then
@@ -98,10 +99,6 @@ jobs:
             # Build Next.js application
             echo "🏗️  Building Next.js application..."
             bun run build
-
-            # Make start script executable
-            echo "🔧 Making start script executable..."
-            chmod +x start.sh || echo "⚠️  start.sh not found (may not be needed)"
 
             # Restart the service with PM2
             echo "🔄 Restarting application..."

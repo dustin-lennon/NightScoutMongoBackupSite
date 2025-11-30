@@ -8,10 +8,10 @@ module.exports = {
   apps: [
     {
       name: 'nightscout-backup-site',
-      script: './start.sh',
+      script: 'bun',
+      args: 'run start',
       cwd: path.resolve(__dirname),
       exec_mode: 'fork',
-      interpreter: 'none',
       instances: 1,
       autorestart: true,
       watch: false,
