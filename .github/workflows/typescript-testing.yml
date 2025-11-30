@@ -56,12 +56,16 @@ jobs:
       - name: Install Playwright browsers
         run: bunx playwright install --with-deps chromium
 
+      - name: Install Dotenvx
+        run: curl -sfS https://dotenvx.sh/install.sh | sh
+
       - name: Run E2E tests
         env:
           NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
           NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+          DOTENV_PRIVATE_KEY_CI: ${{ secrets.DOTENV_PRIVATE_KEY_CI || '' }}
           PLAYWRIGHT_WORKERS: 4
-        run: bun run test:e2e
+        run: dotenvx run -- bun run test:e2e
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
