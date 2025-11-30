@@ -2,6 +2,10 @@
 // The config you add here will be used whenever the server handles a request or edge features are loaded.
 // https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
+// Load dotenv-vault FIRST, before any other imports that might use environment variables
+// This ensures encrypted .env.vault files are decrypted and loaded in production
+import "@dotenvx/dotenvx/config";
+
 import * as Sentry from "@sentry/nextjs";
 
 export async function register() {
