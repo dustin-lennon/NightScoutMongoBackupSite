@@ -1,17 +1,18 @@
 // PM2 ecosystem configuration for production
 // 
 // This configuration runs the Next.js production server.
-// Make sure to build the app first: npm run build
+// Make sure to build the app first: bun run build
 const path = require('node:path');
 
 module.exports = {
   apps: [
     {
       name: 'nightscout-backup-site',
-      script: 'node_modules/.bin/next',
-      args: 'start',
+      script: 'bun',
+      args: 'run start',
       cwd: path.resolve(__dirname),
       exec_mode: 'fork',
+      interpreter: 'none',
       instances: 1,
       autorestart: true,
       watch: false,
