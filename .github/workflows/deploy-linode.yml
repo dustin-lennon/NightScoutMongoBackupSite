@@ -99,6 +99,10 @@ jobs:
             echo "🏗️  Building Next.js application..."
             bun run build
 
+            # Make start script executable
+            echo "🔧 Making start script executable..."
+            chmod +x start.sh || echo "⚠️  start.sh not found (may not be needed)"
+
             # Restart the service with PM2
             echo "🔄 Restarting application..."
             pm2 reload ecosystem.prod.config.js || pm2 start ecosystem.prod.config.js
