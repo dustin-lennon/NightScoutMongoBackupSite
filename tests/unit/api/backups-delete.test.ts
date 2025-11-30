@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { S3Client, DeleteObjectCommand } from "@aws-sdk/client-s3";
 
 // Mock before any imports
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 vi.mock("@aws-sdk/client-s3", () => {
   const mockSend = vi.fn();
   return {

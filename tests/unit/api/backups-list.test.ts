@@ -1,15 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { S3Client, ListObjectsV2Command } from "@aws-sdk/client-s3";
 
-// Create a store object that will hold the mock - defined before mock
-const mockStore = { send: null as ReturnType<typeof vi.fn> | null };
-
-// Mock before any imports - the factory can access mockStore
+// Mock before any imports
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 vi.mock("@aws-sdk/client-s3", () => {
   const mockSend = vi.fn();
-  // Use a setTimeout to set it after initialization, or just return it directly
-  // Actually, we can't mutate outside in the factory due to hoisting
-  // So we'll return the mock function and access it via a different method
   return {
     S3Client: vi.fn(() => ({
       send: mockSend,

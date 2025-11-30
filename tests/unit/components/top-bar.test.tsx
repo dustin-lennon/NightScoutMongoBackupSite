@@ -8,7 +8,7 @@ vi.mock("next-auth/react");
 vi.mock("next/navigation");
 
 vi.mock("next/image", () => ({
-  default: ({ src, alt, ...props }: any) => {
+  default: ({ src, alt, ...props }: { src: string; alt: string; [key: string]: unknown }) => {
     // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
     return <img src={src} alt={alt} {...props} />;
   },
