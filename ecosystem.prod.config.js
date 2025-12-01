@@ -9,6 +9,7 @@
 // 
 // Required variables (must be exported in shell before PM2 start/reload):
 // - NEXTAUTH_SECRET
+// - NEXTAUTH_URL (e.g., https://nightscout-backup.stelth2000inc.com)
 // - DISCORD_CLIENT_ID
 // - DISCORD_CLIENT_SECRET
 // - ALLOWED_DISCORD_USER_ID

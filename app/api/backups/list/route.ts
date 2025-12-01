@@ -46,8 +46,9 @@ export async function GET() {
     return NextResponse.json({ files });
   } catch (err) {
     console.error("[backups/list] Error listing S3 objects", err);
+    const errorMessage = err instanceof Error ? err.message : String(err);
     return NextResponse.json(
-      { error: "Failed to list backups from S3." },
+      { error: `Failed to list backups from S3: ${errorMessage}` },
       { status: 500 }
     );
   }
