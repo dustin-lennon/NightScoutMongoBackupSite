@@ -48,11 +48,12 @@ jobs:
 
           # NextAuth and Discord secrets - passed directly from GitHub secrets
           NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
           DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
           DISCORD_CLIENT_SECRET: ${{ secrets.DISCORD_CLIENT_SECRET }}
           ALLOWED_DISCORD_USER_ID: ${{ secrets.ALLOWED_DISCORD_USER_ID }}
         run: |
-          ssh ${LINODE_USER}@${LINODE_HOST} "DEPLOY_PATH='${DEPLOY_PATH}' NEXTAUTH_SECRET='${NEXTAUTH_SECRET}' DISCORD_CLIENT_ID='${DISCORD_CLIENT_ID}' DISCORD_CLIENT_SECRET='${DISCORD_CLIENT_SECRET}' ALLOWED_DISCORD_USER_ID='${ALLOWED_DISCORD_USER_ID}' bash -s" << 'EOF'
+          ssh ${LINODE_USER}@${LINODE_HOST} "DEPLOY_PATH='${DEPLOY_PATH}' NEXTAUTH_SECRET='${NEXTAUTH_SECRET}' NEXTAUTH_URL='${NEXTAUTH_URL}' DISCORD_CLIENT_ID='${DISCORD_CLIENT_ID}' DISCORD_CLIENT_SECRET='${DISCORD_CLIENT_SECRET}' ALLOWED_DISCORD_USER_ID='${ALLOWED_DISCORD_USER_ID}' bash -s" << 'EOF'
           set -e
 
           echo "📦 Starting deployment to ${DEPLOY_PATH}..."
@@ -110,12 +111,14 @@ jobs:
           # These will be available to the Next.js application
           # Variables are passed from GitHub Actions secrets via SSH command
           export NEXTAUTH_SECRET="${NEXTAUTH_SECRET}"
+          export NEXTAUTH_URL="${NEXTAUTH_URL}"
           export DISCORD_CLIENT_ID="${DISCORD_CLIENT_ID}"
           export DISCORD_CLIENT_SECRET="${DISCORD_CLIENT_SECRET}"
           export ALLOWED_DISCORD_USER_ID="${ALLOWED_DISCORD_USER_ID}"
 
           echo "✅ Environment variables exported for PM2"
           echo "   NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:+[SET]}${NEXTAUTH_SECRET:-[NOT SET]}"
+          echo "   NEXTAUTH_URL: ${NEXTAUTH_URL:+[SET]}${NEXTAUTH_URL:-[NOT SET]}"
           echo "   DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID:+[SET]}${DISCORD_CLIENT_ID:-[NOT SET]}"
           echo "   DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET:+[SET]}${DISCORD_CLIENT_SECRET:-[NOT SET]}"
           echo "   ALLOWED_DISCORD_USER_ID: ${ALLOWED_DISCORD_USER_ID:+[SET]}${ALLOWED_DISCORD_USER_ID:-[NOT SET]}"
@@ -123,6 +126,10 @@ jobs:
           # Verify variables are actually set (non-empty)
           if [ -z "${NEXTAUTH_SECRET}" ]; then
             echo "❌ ERROR: NEXTAUTH_SECRET is not set!"
+            exit 1
+          fi
+          if [ -z "${NEXTAUTH_URL}" ]; then
+            echo "❌ ERROR: NEXTAUTH_URL is not set!"
             exit 1
           fi
           if [ -z "${DISCORD_CLIENT_ID}" ]; then
@@ -161,6 +168,11 @@ jobs:
               echo "✅ NEXTAUTH_SECRET is set in PM2 process"
             else
               echo "⚠️  NEXTAUTH_SECRET not found in PM2 process environment"
+            fi
+            if echo "$PM2_ENV" | grep -q "NEXTAUTH_URL"; then
+              echo "✅ NEXTAUTH_URL is set in PM2 process"
+            else
+              echo "⚠️  NEXTAUTH_URL not found in PM2 process environment"
             fi
             if echo "$PM2_ENV" | grep -q "DISCORD_CLIENT_ID"; then
               echo "✅ DISCORD_CLIENT_ID is set in PM2 process"
