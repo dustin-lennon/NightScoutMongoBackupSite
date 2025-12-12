@@ -18,5 +18,7 @@ module.exports = {
         'revert',   // Revert a previous commit
       ],
     ],
+    // Relax body line length (semantic-release commits include URLs)
+    'body-max-line-length': [2, 'always', 200],
   },
 };

@@ -1,1 +1,6 @@
+# Skip commitlint for semantic-release commits (they include [skip ci])
+if grep -q "\[skip ci\]" "$1"; then
+  exit 0
+fi
+
 bunx commitlint --edit $1
