@@ -45,6 +45,15 @@ test.describe("Dashboard", () => {
         }),
       });
     });
+
+    // Mock PM2 status API
+    await page.route("**/api/pm2/status", async (route) => {
+      await route.fulfill({
+        status: 404,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "No Discord bot process found in PM2" }),
+      });
+    });
   });
 
   test("displays dashboard when authenticated", async ({ page }) => {
@@ -71,7 +80,8 @@ test.describe("Dashboard", () => {
       });
     });
 
-    const refreshButton = page.getByRole("button", { name: /refresh/i });
+    // Target the backups refresh button specifically (first one in the header, near "Create backup")
+    const refreshButton = page.locator("header").getByRole("button", { name: /refresh/i });
     await refreshButton.click();
 
     await expect(page.getByText(/no backups found yet/i)).toBeVisible();
