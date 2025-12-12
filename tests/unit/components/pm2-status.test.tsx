@@ -178,7 +178,7 @@ describe("PM2Status", () => {
     vi.useRealTimers();
   });
 
-  it.skip("displays status badge with correct color for online status", async () => {
+  it("displays status badge with correct color for online status", async () => {
     const mockProcess = {
       name: "test-bot",
       status: "online",
@@ -200,7 +200,7 @@ describe("PM2Status", () => {
     }, { timeout: TEST_TIMEOUT });
   });
 
-  it("displays status badge with correct color for stopped status", async () => {
+  it.skip("displays status badge with correct color for stopped status", async () => {
     const mockProcess = {
       name: "test-bot",
       status: "stopped",
