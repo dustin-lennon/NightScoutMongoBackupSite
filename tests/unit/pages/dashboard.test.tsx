@@ -101,10 +101,41 @@ const waitForFileToAppear = async (filename: string) => {
   await waitForElement(filename, TEST_TIMEOUT);
 };
 
+// Helper to set up mocks for both backups and PM2 status APIs
+// Maintains a queue of responses that can be consumed by mockResolvedValueOnce
+let backupsResponseQueue: Response[] = [];
+let pm2ResponseQueue: Response[] = [];
+
+const setupMocks = (
+  backupsResponse: Response,
+  pm2Response: Response = createPM2StatusResponse()
+) => {
+  backupsResponseQueue.push(backupsResponse);
+  pm2ResponseQueue.push(pm2Response);
+
+  // Set up implementation that checks the queue
+  mockFetch.mockImplementation((url: string | URL | Request) => {
+    const urlString = typeof url === "string" ? url : url instanceof URL ? url.pathname : url.url;
+    if (typeof urlString === "string") {
+      if (urlString.includes("/api/pm2/status") && pm2ResponseQueue.length > 0) {
+        return Promise.resolve(pm2ResponseQueue.shift()!);
+      }
+      if (urlString.includes("/api/backups/list") && backupsResponseQueue.length > 0) {
+        return Promise.resolve(backupsResponseQueue.shift()!);
+      }
+    }
+    // If queue is empty or URL doesn't match, let other mocks handle it
+    return Promise.reject(new Error(`Unmocked fetch call to: ${urlString}`));
+  });
+};
+
 describe("DashboardPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockUseSession.mockReturnValue(DEFAULT_AUTH_SESSION as never);
+    // Reset queues
+    backupsResponseQueue = [];
+    pm2ResponseQueue = [];
   });
 
   afterEach(() => {
@@ -112,9 +143,7 @@ describe("DashboardPage", () => {
   });
 
   it("renders the dashboard title", async () => {
-    mockFetch
-      .mockResolvedValueOnce(createEmptyFilesResponse())
-      .mockResolvedValueOnce(createPM2StatusResponse());
+    setupMocks(createEmptyFilesResponse());
 
     render(<DashboardPage />);
 
@@ -126,9 +155,7 @@ describe("DashboardPage", () => {
   });
 
   it("displays empty state when no backups exist", async () => {
-    mockFetch
-      .mockResolvedValueOnce(createEmptyFilesResponse())
-      .mockResolvedValueOnce(createPM2StatusResponse());
+    setupMocks(createEmptyFilesResponse());
 
     render(<DashboardPage />);
 
@@ -136,9 +163,7 @@ describe("DashboardPage", () => {
   });
 
   it("displays backup files in table", async () => {
-    mockFetch
-      .mockResolvedValueOnce(createFilesResponse(MULTIPLE_MOCK_FILES))
-      .mockResolvedValueOnce(createPM2StatusResponse());
+    setupMocks(createFilesResponse(MULTIPLE_MOCK_FILES));
 
     render(<DashboardPage />);
 
@@ -149,9 +174,8 @@ describe("DashboardPage", () => {
   });
 
   it("shows error message when fetch fails", async () => {
-    mockFetch
-      .mockRejectedValueOnce(new Error("Network error"))
-      .mockResolvedValueOnce(createPM2StatusResponse());
+    setupMocks(createEmptyFilesResponse());
+    mockFetch.mockRejectedValueOnce(new Error("Network error"));
 
     render(<DashboardPage />);
 
@@ -159,15 +183,13 @@ describe("DashboardPage", () => {
   });
 
   it("creates backup when button is clicked", async () => {
+    setupMocks(createEmptyFilesResponse());
     mockFetch
-      .mockResolvedValueOnce(createEmptyFilesResponse())
-      .mockResolvedValueOnce(createPM2StatusResponse())
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({ message: "Backup triggered." }),
-      } as Response)
-      .mockResolvedValueOnce(createEmptyFilesResponse())
-      .mockResolvedValueOnce(createPM2StatusResponse());
+      } as Response);
+    setupMocks(createEmptyFilesResponse()); // For refresh after create
 
     await renderAndWaitForFetch();
 
@@ -185,9 +207,7 @@ describe("DashboardPage", () => {
   });
 
   it("shows delete confirmation modal when delete button is clicked", async () => {
-    mockFetch
-      .mockResolvedValueOnce(createFilesResponse(SINGLE_MOCK_FILE))
-      .mockResolvedValueOnce(createPM2StatusResponse());
+    setupMocks(createFilesResponse(SINGLE_MOCK_FILE));
 
     render(<DashboardPage />);
     await waitForFileToAppear("dexcom_20250101.tar.gz");
@@ -203,9 +223,7 @@ describe("DashboardPage", () => {
   });
 
   it("cancels delete when cancel button is clicked", async () => {
-    mockFetch
-      .mockResolvedValueOnce(createFilesResponse(SINGLE_MOCK_FILE))
-      .mockResolvedValueOnce(createPM2StatusResponse());
+    setupMocks(createFilesResponse(SINGLE_MOCK_FILE));
 
     render(<DashboardPage />);
     await waitForFileToAppear("dexcom_20250101.tar.gz");
@@ -225,15 +243,12 @@ describe("DashboardPage", () => {
   });
 
   it("deletes backup when confirmed", async () => {
-    mockFetch
-      .mockResolvedValueOnce(createFilesResponse(SINGLE_MOCK_FILE))
-      .mockResolvedValueOnce(createPM2StatusResponse())
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ message: "Backup deleted successfully." }),
-      } as Response)
-      .mockResolvedValueOnce(createEmptyFilesResponse())
-      .mockResolvedValueOnce(createPM2StatusResponse());
+    setupMocks(createFilesResponse(SINGLE_MOCK_FILE));
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ message: "Backup deleted successfully." }),
+    } as Response);
+    setupMocks(createEmptyFilesResponse()); // For refresh after delete
 
     render(<DashboardPage />);
     await waitForFileToAppear("dexcom_20250101.tar.gz");
@@ -262,9 +277,7 @@ describe("DashboardPage", () => {
   it("handles files with missing lastModified and size", async () => {
     const mockFiles = [createMockFile("dexcom_20250101.tar.gz")];
 
-    mockFetch
-      .mockResolvedValueOnce(createFilesResponse(mockFiles))
-      .mockResolvedValueOnce(createPM2StatusResponse());
+    setupMocks(createFilesResponse(mockFiles));
 
     render(<DashboardPage />);
     await waitForFileToAppear("dexcom_20250101.tar.gz");
@@ -274,39 +287,39 @@ describe("DashboardPage", () => {
   });
 
   it("refreshes backups when refresh button is clicked", async () => {
-    mockFetch
-      .mockResolvedValueOnce(createEmptyFilesResponse())
-      .mockResolvedValueOnce(createPM2StatusResponse())
-      .mockResolvedValueOnce(createEmptyFilesResponse())
-      .mockResolvedValueOnce(createPM2StatusResponse());
+    setupMocks(createEmptyFilesResponse()); // Initial load
+    setupMocks(createEmptyFilesResponse()); // Refresh call (both APIs)
 
     render(<DashboardPage />);
-    await waitForElement(/refresh/i);
+    await waitFor(() => {
+      expect(screen.getAllByText(/refresh/i).length).toBeGreaterThan(0);
+    }, { timeout: TEST_TIMEOUT });
 
-    const refreshButton = screen.getByText(/refresh/i);
+    // Click the backups refresh button (first one in header, near "Create backup")
+    const refreshButtons = screen.getAllByText(/refresh/i);
+    const backupsRefreshButton = refreshButtons[0]; // First one is in the header
     const user = setupUser();
-    await user.click(refreshButton);
+    await user.click(backupsRefreshButton);
 
     await waitFor(() => {
-      // Should be called at least 2 times (initial load + refresh)
-      expect(mockFetch).toHaveBeenCalledTimes(4);
+      // Initial: backups/list + pm2/status = 2 calls
+      // After refresh click: backups/list = 1 more call
+      // Total should be at least 3
+      expect(mockFetch).toHaveBeenCalledTimes(3);
     }, { timeout: TEST_TIMEOUT });
   });
 
   it("handles backup creation with message and stats", async () => {
-    mockFetch
-      .mockResolvedValueOnce(createEmptyFilesResponse())
-      .mockResolvedValueOnce(createPM2StatusResponse())
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          message: "Backup created successfully and uploaded to S3.",
-          url: "https://s3-url",
-          stats: { collections: 5 },
-        }),
-      } as Response)
-      .mockResolvedValueOnce(createEmptyFilesResponse())
-      .mockResolvedValueOnce(createPM2StatusResponse());
+    setupMocks(createEmptyFilesResponse());
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        message: "Backup created successfully and uploaded to S3.",
+        url: "https://s3-url",
+        stats: { collections: 5 },
+      }),
+    } as Response);
+    setupMocks(createEmptyFilesResponse()); // For refresh after create
 
     await renderAndWaitForFetch();
 
