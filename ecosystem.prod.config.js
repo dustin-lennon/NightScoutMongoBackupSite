@@ -26,6 +26,7 @@ module.exports = {
     {
       name: 'nightscout-backup-site',
       script: path.resolve(__dirname, 'start.js'),
+      interpreter: 'node',
       cwd: path.resolve(__dirname),
       exec_mode: 'fork',
       instances: 1,
