@@ -20,8 +20,8 @@ jobs:
         with:
           fetch-depth: 0
           # Use a PAT with admin rights to bypass branch protection rules
-          # Create a PAT with repo scope and add it as a secret named RELEASE_TOKEN
-          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          # Check for common PAT secret names, fallback to GITHUB_TOKEN
+          token: ${{ secrets.GH_PAT || secrets.GITHUB_PAT || secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -37,6 +37,7 @@ jobs:
       - name: Run semantic-release
         env:
           # Use PAT with admin rights to bypass branch protection
-          # The PAT needs 'repo' scope and should be added as RELEASE_TOKEN secret
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          # Check for common PAT secret names: GH_PAT, GITHUB_PAT, RELEASE_TOKEN
+          # The PAT needs 'repo' scope to bypass branch protection rules
+          GITHUB_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_PAT || secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
         run: bun run semantic-release
