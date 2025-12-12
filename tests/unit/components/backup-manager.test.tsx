@@ -416,16 +416,22 @@ describe("BackupManager", () => {
   it("disables delete button while deleting", async () => {
     mockFetch
       .mockResolvedValueOnce(createFilesResponse(SINGLE_MOCK_FILE))
-      .mockImplementationOnce(() => {
-        // Simulate a slow delete response
-        return new Promise((resolve) => {
-          setTimeout(() => {
-            resolve({
-              ok: true,
-              json: async () => ({ message: "Backup deleted successfully." }),
-            } as Response);
-          }, 100);
-        });
+      .mockImplementationOnce((url: string | URL | Request) => {
+        const urlString = typeof url === "string" ? url : url instanceof URL ? url.pathname : url.url;
+        // Only intercept delete API calls
+        if (typeof urlString === "string" && urlString.includes("/api/backups/delete")) {
+          // Simulate a slow delete response
+          return new Promise((resolve) => {
+            setTimeout(() => {
+              resolve({
+                ok: true,
+                json: async () => ({ message: "Backup deleted successfully." }),
+              } as Response);
+            }, 100);
+          });
+        }
+        // For other calls, reject to avoid intercepting wrong calls
+        return Promise.reject(new Error(`Unmocked fetch call to: ${urlString}`));
       })
       .mockResolvedValueOnce(createEmptyFilesResponse()); // For refresh after delete
 
