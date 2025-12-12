@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/dustin-lennon/NightScoutMongoBackupSite/compare/v1.0.0...v1.0.1) (2025-12-12)
+
+
+### Bug Fixes
+
+* inject version at build time for Next.js ([52bbe38](https://github.com/dustin-lennon/NightScoutMongoBackupSite/commit/52bbe38126401bd69d5014aa5cd09cdf787d0d7c))
+
 # 1.0.0 (2025-12-12)
 
 
