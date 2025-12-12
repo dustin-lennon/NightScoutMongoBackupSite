@@ -22,6 +22,13 @@ jobs:
           # Use RELEASE_TOKEN PAT to bypass branch protection rules
           # Create a PAT with 'repo' scope and add it as RELEASE_TOKEN secret
           token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+      
+      - name: Configure git for semantic-release
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Configure git to use the PAT token for pushing
+          git remote set-url origin https://${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
