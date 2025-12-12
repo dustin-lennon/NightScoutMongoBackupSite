@@ -1,3 +1,10 @@
+## [1.3.1](https://github.com/dustin-lennon/NightScoutMongoBackupSite/compare/v1.3.0...v1.3.1) (2025-12-12)
+
+
+### Bug Fixes
+
+* update delete button test to properly mock fetch for delete API ([593087e](https://github.com/dustin-lennon/NightScoutMongoBackupSite/commit/593087e59f3716b87905d4eb39da0b8154d8ec3d))
+
 # [1.3.0](https://github.com/dustin-lennon/NightScoutMongoBackupSite/compare/v1.2.0...v1.3.0) (2025-12-12)
 
 
