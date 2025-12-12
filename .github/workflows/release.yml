@@ -36,8 +36,7 @@ jobs:
 
       - name: Run semantic-release
         env:
-          # Use PAT with admin rights to bypass branch protection
-          # Check for common PAT secret names: GH_PAT, GITHUB_PAT, RELEASE_TOKEN
-          # The PAT needs 'repo' scope to bypass branch protection rules
-          GITHUB_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_PAT || secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          # Use RELEASE_TOKEN PAT to bypass branch protection rules
+          # The PAT needs 'repo' scope and should be added as RELEASE_TOKEN secret
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
         run: bun run semantic-release
