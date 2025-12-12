@@ -14,6 +14,12 @@
 // - DISCORD_CLIENT_SECRET
 // - ALLOWED_DISCORD_USER_ID
 const path = require('node:path');
+const fs = require('node:fs');
+
+// Read version from package.json
+const packageJsonPath = path.resolve(__dirname, 'package.json');
+const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+const appVersion = packageJson.version || 'unknown';
 
 module.exports = {
   apps: [
@@ -34,6 +40,9 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         PORT: 3000,
+        // Version from package.json - available to both client and server
+        VERSION: appVersion,
+        NEXT_PUBLIC_VERSION: appVersion,
         // These will be merged from shell environment when using --update-env
         // Do not set defaults here - they must be provided by the deployment script
       }
