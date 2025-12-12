@@ -45,7 +45,8 @@ module.exports = {
         NEXT_PUBLIC_VERSION: appVersion,
         // These will be merged from shell environment when using --update-env
         // Do not set defaults here - they must be provided by the deployment script
-      }
+      },
+      version_metadata: true
     }
   ]
 };
