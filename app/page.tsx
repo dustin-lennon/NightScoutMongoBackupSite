@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import PM2Status from "@/components/pm2-status";
 
 type BackupFile = {
   key: string;
@@ -277,6 +278,8 @@ export default function DashboardPage() {
             </table>
           </div>
         </section>
+
+        <PM2Status />
       </div>
     </main>
   );
