@@ -50,6 +50,24 @@ const createFilesResponse = (files: Array<{ key: string; lastModified?: string; 
   json: async () => ({ files }),
 } as Response);
 
+const createPM2StatusResponse = () => ({
+  ok: true,
+  json: async () => ({
+    processes: [
+      {
+        name: "test-bot",
+        status: "online",
+        uptime: 3600,
+        memory: 128,
+        cpu: 2.5,
+        restarts: 0,
+        pm_id: 0,
+        version: "1.2.0",
+      },
+    ],
+  }),
+} as Response);
+
 // Common mock files
 const SINGLE_MOCK_FILE = [
   createMockFile("dexcom_20250101.tar.gz", "2025-01-01T00:00:00Z", 1048576),
@@ -94,7 +112,9 @@ describe("DashboardPage", () => {
   });
 
   it("renders the dashboard title", async () => {
-    mockFetch.mockResolvedValueOnce(createEmptyFilesResponse());
+    mockFetch
+      .mockResolvedValueOnce(createEmptyFilesResponse())
+      .mockResolvedValueOnce(createPM2StatusResponse());
 
     render(<DashboardPage />);
 
@@ -106,7 +126,9 @@ describe("DashboardPage", () => {
   });
 
   it("displays empty state when no backups exist", async () => {
-    mockFetch.mockResolvedValueOnce(createEmptyFilesResponse());
+    mockFetch
+      .mockResolvedValueOnce(createEmptyFilesResponse())
+      .mockResolvedValueOnce(createPM2StatusResponse());
 
     render(<DashboardPage />);
 
@@ -114,7 +136,9 @@ describe("DashboardPage", () => {
   });
 
   it("displays backup files in table", async () => {
-    mockFetch.mockResolvedValueOnce(createFilesResponse(MULTIPLE_MOCK_FILES));
+    mockFetch
+      .mockResolvedValueOnce(createFilesResponse(MULTIPLE_MOCK_FILES))
+      .mockResolvedValueOnce(createPM2StatusResponse());
 
     render(<DashboardPage />);
 
@@ -125,7 +149,9 @@ describe("DashboardPage", () => {
   });
 
   it("shows error message when fetch fails", async () => {
-    mockFetch.mockRejectedValueOnce(new Error("Network error"));
+    mockFetch
+      .mockRejectedValueOnce(new Error("Network error"))
+      .mockResolvedValueOnce(createPM2StatusResponse());
 
     render(<DashboardPage />);
 
@@ -135,11 +161,13 @@ describe("DashboardPage", () => {
   it("creates backup when button is clicked", async () => {
     mockFetch
       .mockResolvedValueOnce(createEmptyFilesResponse())
+      .mockResolvedValueOnce(createPM2StatusResponse())
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({ message: "Backup triggered." }),
       } as Response)
-      .mockResolvedValueOnce(createEmptyFilesResponse());
+      .mockResolvedValueOnce(createEmptyFilesResponse())
+      .mockResolvedValueOnce(createPM2StatusResponse());
 
     await renderAndWaitForFetch();
 
@@ -157,7 +185,9 @@ describe("DashboardPage", () => {
   });
 
   it("shows delete confirmation modal when delete button is clicked", async () => {
-    mockFetch.mockResolvedValueOnce(createFilesResponse(SINGLE_MOCK_FILE));
+    mockFetch
+      .mockResolvedValueOnce(createFilesResponse(SINGLE_MOCK_FILE))
+      .mockResolvedValueOnce(createPM2StatusResponse());
 
     render(<DashboardPage />);
     await waitForFileToAppear("dexcom_20250101.tar.gz");
@@ -173,7 +203,9 @@ describe("DashboardPage", () => {
   });
 
   it("cancels delete when cancel button is clicked", async () => {
-    mockFetch.mockResolvedValueOnce(createFilesResponse(SINGLE_MOCK_FILE));
+    mockFetch
+      .mockResolvedValueOnce(createFilesResponse(SINGLE_MOCK_FILE))
+      .mockResolvedValueOnce(createPM2StatusResponse());
 
     render(<DashboardPage />);
     await waitForFileToAppear("dexcom_20250101.tar.gz");
@@ -195,11 +227,13 @@ describe("DashboardPage", () => {
   it("deletes backup when confirmed", async () => {
     mockFetch
       .mockResolvedValueOnce(createFilesResponse(SINGLE_MOCK_FILE))
+      .mockResolvedValueOnce(createPM2StatusResponse())
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({ message: "Backup deleted successfully." }),
       } as Response)
-      .mockResolvedValueOnce(createEmptyFilesResponse());
+      .mockResolvedValueOnce(createEmptyFilesResponse())
+      .mockResolvedValueOnce(createPM2StatusResponse());
 
     render(<DashboardPage />);
     await waitForFileToAppear("dexcom_20250101.tar.gz");
@@ -228,7 +262,9 @@ describe("DashboardPage", () => {
   it("handles files with missing lastModified and size", async () => {
     const mockFiles = [createMockFile("dexcom_20250101.tar.gz")];
 
-    mockFetch.mockResolvedValueOnce(createFilesResponse(mockFiles));
+    mockFetch
+      .mockResolvedValueOnce(createFilesResponse(mockFiles))
+      .mockResolvedValueOnce(createPM2StatusResponse());
 
     render(<DashboardPage />);
     await waitForFileToAppear("dexcom_20250101.tar.gz");
@@ -240,7 +276,9 @@ describe("DashboardPage", () => {
   it("refreshes backups when refresh button is clicked", async () => {
     mockFetch
       .mockResolvedValueOnce(createEmptyFilesResponse())
-      .mockResolvedValueOnce(createEmptyFilesResponse());
+      .mockResolvedValueOnce(createPM2StatusResponse())
+      .mockResolvedValueOnce(createEmptyFilesResponse())
+      .mockResolvedValueOnce(createPM2StatusResponse());
 
     render(<DashboardPage />);
     await waitForElement(/refresh/i);
@@ -250,13 +288,15 @@ describe("DashboardPage", () => {
     await user.click(refreshButton);
 
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledTimes(2);
+      // Should be called at least 2 times (initial load + refresh)
+      expect(mockFetch).toHaveBeenCalledTimes(4);
     }, { timeout: TEST_TIMEOUT });
   });
 
   it("handles backup creation with message and stats", async () => {
     mockFetch
       .mockResolvedValueOnce(createEmptyFilesResponse())
+      .mockResolvedValueOnce(createPM2StatusResponse())
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({
@@ -265,7 +305,8 @@ describe("DashboardPage", () => {
           stats: { collections: 5 },
         }),
       } as Response)
-      .mockResolvedValueOnce(createEmptyFilesResponse());
+      .mockResolvedValueOnce(createEmptyFilesResponse())
+      .mockResolvedValueOnce(createPM2StatusResponse());
 
     await renderAndWaitForFetch();
 
