@@ -11,6 +11,8 @@ permissions:
   issues: write
   pull-requests: write
   repository-projects: write
+  # Note: Organization-level project access requires the workflow to be granted
+  # organization permissions in Settings > Actions > General > Workflow permissions
 
 jobs:
   add-to-project:
@@ -18,19 +20,52 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER }}
+      GH_TOKEN: ${{ secrets.ORG_PROJECT_TOKEN }}
     steps:
+      - name: List available projects
+        if: env.PROJECT_NUMBER == '' || env.PROJECT_NUMBER == null
+        uses: actions/github-script@v8
+        continue-on-error: true
+        with:
+          script: |
+            const query = `
+              query($owner: String!, $first: Int!) {
+                organization(login: $owner) {
+                  projectsV2(first: $first) {
+                    nodes {
+                      number
+                      title
+                      public
+                      url
+                    }
+                  }
+                }
+              }
+            `;
+            try {
+              await github.graphql(query, {
+                owner: 'Stelth2000-Inc',
+                first: 20
+              });
+            } catch (error) {
+              // Ignore errors when listing projects
+            }
+
       - name: Get project ID
         id: project
         uses: actions/github-script@v8
         with:
+          github-token: ${{ secrets.ORG_PROJECT_TOKEN }}
           script: |
             const projectNumber = parseInt(process.env.PROJECT_NUMBER || '1');
+
             const query = `
               query($owner: String!, $projectNumber: Int!) {
                 organization(login: $owner) {
                   projectV2(number: $projectNumber) {
                     id
                     title
+                    public
                   }
                 }
               }
@@ -41,20 +76,96 @@ jobs:
             };
             try {
               const result = await github.graphql(query, variables);
-              
-              if (!result.organization.projectV2) {
-                core.setFailed(`❌ ProjectV2 with number ${projectNumber} not found in organization Stelth2000-Inc. Please create a project or update the PROJECT_NUMBER variable.`);
+
+              if (!result.organization) {
+                core.setFailed('❌ Organization \'Stelth2000-Inc\' not found or not accessible. Check organization permissions.');
                 return;
               }
-              
+
+              if (!result.organization.projectV2) {
+                // Try to list available projects for better error message
+                let availableProjects = '';
+                try {
+                  const listQuery = `
+                    query($owner: String!, $first: Int!) {
+                      organization(login: $owner) {
+                        projectsV2(first: $first) {
+                          nodes {
+                            number
+                            title
+                          }
+                        }
+                      }
+                    }
+                  `;
+                  const listResult = await github.graphql(listQuery, {
+                    owner: 'Stelth2000-Inc',
+                    first: 10
+                  });
+                  if (listResult.organization && listResult.organization.projectsV2 && listResult.organization.projectsV2.nodes.length > 0) {
+                    availableProjects = '\n\nAvailable projects:\n' +
+                      listResult.organization.projectsV2.nodes.map(p => `  - Project #${p.number}: ${p.title}`).join('\n') +
+                      '\n\n💡 Set the PROJECT_NUMBER repository variable to one of the project numbers above.';
+                  }
+                } catch (e) {
+                  // Ignore errors when listing projects
+                }
+
+                core.setFailed(
+                  '❌ ProjectV2 with number ' + projectNumber + ' not found in organization Stelth2000-Inc.\n\n' +
+                  'Please verify:\n' +
+                  '1. The project exists at: https://github.com/orgs/Stelth2000-Inc/projects/' + projectNumber + '\n' +
+                  '2. The project is accessible to the repository\n' +
+                  '3. The workflow has organization-level permissions enabled\n' +
+                  '4. Set the PROJECT_NUMBER repository variable in Settings > Secrets and variables > Actions > Variables' +
+                  availableProjects
+                );
+                return;
+              }
+
               const projectId = result.organization.projectV2.id;
-              const projectTitle = result.organization.projectV2.title;
               core.setOutput('projectId', projectId);
-              console.log(`✅ Found project: ${projectTitle} (${projectId})`);
               return projectId;
             } catch (error) {
+
               if (error.errors && error.errors.some(e => e.type === 'NOT_FOUND')) {
-                core.setFailed(`❌ ProjectV2 with number ${projectNumber} not found in organization Stelth2000-Inc. Please create a project or update the PROJECT_NUMBER variable.`);
+                // Try to list available projects for better error message
+                let availableProjects = '';
+                try {
+                  const listQuery = `
+                    query($owner: String!, $first: Int!) {
+                      organization(login: $owner) {
+                        projectsV2(first: $first) {
+                          nodes {
+                            number
+                            title
+                          }
+                        }
+                      }
+                    }
+                  `;
+                  const listResult = await github.graphql(listQuery, {
+                    owner: 'Stelth2000-Inc',
+                    first: 10
+                  });
+                  if (listResult.organization && listResult.organization.projectsV2 && listResult.organization.projectsV2.nodes.length > 0) {
+                    availableProjects = '\n\nAvailable projects:\n' +
+                      listResult.organization.projectsV2.nodes.map(p => `  - Project #${p.number}: ${p.title}`).join('\n') +
+                      '\n\n💡 Set the PROJECT_NUMBER repository variable to one of the project numbers above.';
+                  }
+                } catch (e) {
+                  // Ignore errors when listing projects
+                }
+
+                core.setFailed(
+                  '❌ ProjectV2 with number ' + projectNumber + ' not found in organization Stelth2000-Inc.\n\n' +
+                  'Please verify:\n' +
+                  '1. The project exists at: https://github.com/orgs/Stelth2000-Inc/projects/' + projectNumber + '\n' +
+                  '2. The workflow has organization-level permissions enabled\n' +
+                  '3. The repository has access to organization projects\n' +
+                  '4. Set the PROJECT_NUMBER repository variable in Settings > Secrets and variables > Actions > Variables' +
+                  availableProjects
+                );
               } else {
                 throw error;
               }
@@ -64,6 +175,7 @@ jobs:
         id: status-field
         uses: actions/github-script@v8
         with:
+          github-token: ${{ secrets.ORG_PROJECT_TOKEN }}
           script: |
             const projectNumber = parseInt(process.env.PROJECT_NUMBER || '1');
             const query = `
@@ -89,18 +201,18 @@ jobs:
             };
             try {
               const result = await github.graphql(query, variables);
-              
+
               if (!result.organization.projectV2) {
                 core.setFailed(`❌ ProjectV2 with number ${projectNumber} not found.`);
                 return;
               }
-              
+
               const statusField = result.organization.projectV2.field;
               if (!statusField) {
                 core.setFailed(`❌ Status field not found in project. Please add a "Status" field to your project.`);
                 return;
               }
-              
+
               core.setOutput('fieldId', statusField.id);
 
               // Find or create status options
@@ -126,6 +238,7 @@ jobs:
         if: github.event_name == 'issues' && (github.event.action == 'opened' || github.event.action == 'reopened')
         uses: actions/github-script@v8
         with:
+          github-token: ${{ secrets.ORG_PROJECT_TOKEN }}
           script: |
             const projectId = '${{ steps.project.outputs.projectId }}';
             const issueId = context.payload.issue.node_id;
@@ -185,6 +298,7 @@ jobs:
         if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'reopened' || github.event.action == 'ready_for_review')
         uses: actions/github-script@v8
         with:
+          github-token: ${{ secrets.ORG_PROJECT_TOKEN }}
           script: |
             const projectId = '${{ steps.project.outputs.projectId }}';
             const prId = context.payload.pull_request.node_id;
@@ -255,6 +369,7 @@ jobs:
         if: github.event_name == 'pull_request' && github.event.action == 'closed'
         uses: actions/github-script@v8
         with:
+          github-token: ${{ secrets.ORG_PROJECT_TOKEN }}
           script: |
             const projectId = '${{ steps.project.outputs.projectId }}';
             const prId = context.payload.pull_request.node_id;
@@ -331,6 +446,7 @@ jobs:
         if: github.event_name == 'issues' && github.event.action == 'closed'
         uses: actions/github-script@v8
         with:
+          github-token: ${{ secrets.ORG_PROJECT_TOKEN }}
           script: |
             const projectId = '${{ steps.project.outputs.projectId }}';
             const issueId = context.payload.issue.node_id;
