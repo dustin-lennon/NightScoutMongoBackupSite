@@ -16,3 +16,6 @@ logs
 .env.keys
 NGINX_DEPLOYMENT.md
 next-env.d.ts
+*nginx*
+*NGINX*
+nginx-combined.conf

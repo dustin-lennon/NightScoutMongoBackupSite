@@ -4,7 +4,6 @@ import { NextResponse } from "next/server";
 // The Python bot handles: MongoDB dump -> compression -> S3 upload -> cleanup.
 
 // Use environment variable if set, otherwise use relative URL (for same-domain setup)
-// In production with nginx, use relative URL so requests go through nginx routing
 const PYTHON_API_URL = process.env.PYTHON_BACKUP_API_URL || "";
 
 export async function POST() {
