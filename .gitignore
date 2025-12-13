@@ -14,3 +14,4 @@ test-results
 logs
 
 .env.keys
+NGINX_DEPLOYMENT.md
