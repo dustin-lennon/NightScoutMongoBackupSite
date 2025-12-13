@@ -13,32 +13,54 @@ jobs:
   update-review-status:
     name: Update Project Status for Reviews
     runs-on: ubuntu-latest
+    env:
+      PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER || '1' }}
     steps:
       - name: Get project ID
         id: project
         uses: actions/github-script@v8
         with:
           script: |
+            const projectNumber = parseInt(process.env.PROJECT_NUMBER || '1');
             const query = `
               query($owner: String!, $projectNumber: Int!) {
                 organization(login: $owner) {
                   projectV2(number: $projectNumber) {
                     id
+                    title
                   }
                 }
               }
             `;
-            const result = await github.graphql(query, {
-              owner: 'Stelth2000-Inc',
-              projectNumber: 1
-            });
-            core.setOutput('projectId', result.organization.projectV2.id);
+            try {
+              const result = await github.graphql(query, {
+                owner: 'Stelth2000-Inc',
+                projectNumber: projectNumber
+              });
+              
+              if (!result.organization.projectV2) {
+                core.setFailed(`❌ ProjectV2 with number ${projectNumber} not found in organization Stelth2000-Inc. Please create a project or update the PROJECT_NUMBER variable.`);
+                return;
+              }
+              
+              const projectId = result.organization.projectV2.id;
+              const projectTitle = result.organization.projectV2.title;
+              core.setOutput('projectId', projectId);
+              console.log(`✅ Found project: ${projectTitle} (${projectId})`);
+            } catch (error) {
+              if (error.errors && error.errors.some(e => e.type === 'NOT_FOUND')) {
+                core.setFailed(`❌ ProjectV2 with number ${projectNumber} not found in organization Stelth2000-Inc. Please create a project or update the PROJECT_NUMBER variable.`);
+              } else {
+                throw error;
+              }
+            }
 
       - name: Get Status field and options
         id: status-field
         uses: actions/github-script@v8
         with:
           script: |
+            const projectNumber = parseInt(process.env.PROJECT_NUMBER || '1');
             const query = `
               query($owner: String!, $projectNumber: Int!) {
                 organization(login: $owner) {
@@ -56,28 +78,47 @@ jobs:
                 }
               }
             `;
-            const result = await github.graphql(query, {
-              owner: 'Stelth2000-Inc',
-              projectNumber: 1
-            });
-            const statusField = result.organization.projectV2.field;
-            const options = statusField.options || [];
+            try {
+              const result = await github.graphql(query, {
+                owner: 'Stelth2000-Inc',
+                projectNumber: projectNumber
+              });
+              
+              if (!result.organization.projectV2) {
+                core.setFailed(`❌ ProjectV2 with number ${projectNumber} not found.`);
+                return;
+              }
+              
+              const statusField = result.organization.projectV2.field;
+              if (!statusField) {
+                core.setFailed(`❌ Status field not found in project. Please add a "Status" field to your project.`);
+                return;
+              }
+              
+              const options = statusField.options || [];
 
-            // Find status options (case-insensitive)
-            const findOption = (name) => {
-              const lowerName = name.toLowerCase();
-              return options.find(opt =>
-                opt.name.toLowerCase() === lowerName ||
-                opt.name.toLowerCase().includes(lowerName)
-              );
-            };
+              // Find status options (case-insensitive)
+              const findOption = (name) => {
+                const lowerName = name.toLowerCase();
+                return options.find(opt =>
+                  opt.name.toLowerCase() === lowerName ||
+                  opt.name.toLowerCase().includes(lowerName)
+                );
+              };
 
-            const inReviewOption = findOption('In Review') || findOption('Review') || findOption('Ready for Review');
-            const inProgressOption = findOption('In Progress') || findOption('In Progress');
+              const inReviewOption = findOption('In Review') || findOption('Review') || findOption('Ready for Review');
+              const inProgressOption = findOption('In Progress') || findOption('In Progress');
 
-            core.setOutput('fieldId', statusField.id);
-            core.setOutput('inReviewOptionId', inReviewOption?.id || '');
-            core.setOutput('inProgressOptionId', inProgressOption?.id || '');
+              core.setOutput('fieldId', statusField.id);
+              core.setOutput('inReviewOptionId', inReviewOption?.id || '');
+              core.setOutput('inProgressOptionId', inProgressOption?.id || '');
+            } catch (error) {
+              if (error.errors && error.errors.some(e => e.type === 'NOT_FOUND')) {
+                core.setFailed(`❌ ProjectV2 with number ${projectNumber} not found.`);
+              } else {
+                throw error;
+              }
+            }
 
       - name: Update status to In Review
         if: github.event.action == 'ready_for_review' || github.event.action == 'review_requested'

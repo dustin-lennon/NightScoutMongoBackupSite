@@ -16,12 +16,15 @@ jobs:
   add-to-project:
     name: Add Issues and PRs to Project
     runs-on: ubuntu-latest
+    env:
+      PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER || '1' }}
     steps:
       - name: Get project ID
         id: project
         uses: actions/github-script@v8
         with:
           script: |
+            const projectNumber = parseInt(process.env.PROJECT_NUMBER || '1');
             const query = `
               query($owner: String!, $projectNumber: Int!) {
                 organization(login: $owner) {
@@ -34,18 +37,35 @@ jobs:
             `;
             const variables = {
               owner: 'Stelth2000-Inc',
-              projectNumber: 1
+              projectNumber: projectNumber
             };
-            const result = await github.graphql(query, variables);
-            const projectId = result.organization.projectV2.id;
-            core.setOutput('projectId', projectId);
-            return projectId;
+            try {
+              const result = await github.graphql(query, variables);
+              
+              if (!result.organization.projectV2) {
+                core.setFailed(`❌ ProjectV2 with number ${projectNumber} not found in organization Stelth2000-Inc. Please create a project or update the PROJECT_NUMBER variable.`);
+                return;
+              }
+              
+              const projectId = result.organization.projectV2.id;
+              const projectTitle = result.organization.projectV2.title;
+              core.setOutput('projectId', projectId);
+              console.log(`✅ Found project: ${projectTitle} (${projectId})`);
+              return projectId;
+            } catch (error) {
+              if (error.errors && error.errors.some(e => e.type === 'NOT_FOUND')) {
+                core.setFailed(`❌ ProjectV2 with number ${projectNumber} not found in organization Stelth2000-Inc. Please create a project or update the PROJECT_NUMBER variable.`);
+              } else {
+                throw error;
+              }
+            }
 
       - name: Get Status field ID
         id: status-field
         uses: actions/github-script@v8
         with:
           script: |
+            const projectNumber = parseInt(process.env.PROJECT_NUMBER || '1');
             const query = `
               query($owner: String!, $projectNumber: Int!) {
                 organization(login: $owner) {
@@ -65,23 +85,42 @@ jobs:
             `;
             const variables = {
               owner: 'Stelth2000-Inc',
-              projectNumber: 1
+              projectNumber: projectNumber
             };
-            const result = await github.graphql(query, variables);
-            const statusField = result.organization.projectV2.field;
-            core.setOutput('fieldId', statusField.id);
+            try {
+              const result = await github.graphql(query, variables);
+              
+              if (!result.organization.projectV2) {
+                core.setFailed(`❌ ProjectV2 with number ${projectNumber} not found.`);
+                return;
+              }
+              
+              const statusField = result.organization.projectV2.field;
+              if (!statusField) {
+                core.setFailed(`❌ Status field not found in project. Please add a "Status" field to your project.`);
+                return;
+              }
+              
+              core.setOutput('fieldId', statusField.id);
 
-            // Find or create status options
-            const options = statusField.options || [];
-            const todoOption = options.find(opt => opt.name === 'Todo') || options.find(opt => opt.name === 'Backlog');
-            const inProgressOption = options.find(opt => opt.name === 'In Progress');
-            const doneOption = options.find(opt => opt.name === 'Done') || options.find(opt => opt.name === 'Completed');
+              // Find or create status options
+              const options = statusField.options || [];
+              const todoOption = options.find(opt => opt.name === 'Todo') || options.find(opt => opt.name === 'Backlog');
+              const inProgressOption = options.find(opt => opt.name === 'In Progress');
+              const doneOption = options.find(opt => opt.name === 'Done') || options.find(opt => opt.name === 'Completed');
 
-            core.setOutput('todoOptionId', todoOption?.id || '');
-            core.setOutput('inProgressOptionId', inProgressOption?.id || '');
-            core.setOutput('doneOptionId', doneOption?.id || '');
+              core.setOutput('todoOptionId', todoOption?.id || '');
+              core.setOutput('inProgressOptionId', inProgressOption?.id || '');
+              core.setOutput('doneOptionId', doneOption?.id || '');
 
-            return { fieldId: statusField.id, options };
+              return { fieldId: statusField.id, options };
+            } catch (error) {
+              if (error.errors && error.errors.some(e => e.type === 'NOT_FOUND')) {
+                core.setFailed(`❌ ProjectV2 with number ${projectNumber} not found.`);
+              } else {
+                throw error;
+              }
+            }
 
       - name: Add issue to project
         if: github.event_name == 'issues' && (github.event.action == 'opened' || github.event.action == 'reopened')
