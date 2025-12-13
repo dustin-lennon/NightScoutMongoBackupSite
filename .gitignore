@@ -10,8 +10,8 @@ playwright-report
 test-results
 *.log
 *.tsbuildinfo
-.sst
 logs
+.DS_Store
 
 .env.keys
 NGINX_DEPLOYMENT.md

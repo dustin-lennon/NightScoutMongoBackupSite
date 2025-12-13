@@ -39,11 +39,11 @@ jobs:
         uses: SonarSource/sonarcloud-github-action@v5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
         with:
           args: >
             -Dsonar.projectKey=Stelth2000-Inc_NightScoutMongoBackupSite
             -Dsonar.organization=stelth2000-inc
-            -Dsonar.host.url=https://sonarcloud.io
             -Dsonar.sources=app,components,proxy.ts
             -Dsonar.tests=tests/unit
             -Dsonar.test.inclusions=tests/unit/**/*.{test,spec}.{ts,tsx}
