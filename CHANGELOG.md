@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/Stelth2000-Inc/NightScoutMongoBackupSite/compare/v1.4.0...v1.5.0) (2025-12-13)
+
+
+### Features
+
+* add Codecov coverage upload to TypeScript testing workflow ([f2c7116](https://github.com/Stelth2000-Inc/NightScoutMongoBackupSite/commit/f2c7116ef434b8c8b3b2da06477ec0505bbe2982))
+
 # [1.4.0](https://github.com/Stelth2000-Inc/NightScoutMongoBackupSite/compare/v1.3.1...v1.4.0) (2025-12-13)
 
 
