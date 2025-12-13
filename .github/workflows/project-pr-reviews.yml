@@ -107,7 +107,7 @@ jobs:
               };
 
               const inReviewOption = findOption('In Review') || findOption('Review') || findOption('Ready for Review');
-              const inProgressOption = findOption('In Progress') || findOption('In Progress');
+              const inProgressOption = findOption('In Progress');
 
               core.setOutput('fieldId', statusField.id);
               core.setOutput('inReviewOptionId', inReviewOption?.id || '');
