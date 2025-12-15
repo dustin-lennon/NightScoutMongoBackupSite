@@ -4,10 +4,17 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 // Mock before any imports
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-vi.mock("@aws-sdk/client-s3", () => ({
-  S3Client: vi.fn(),
-  GetObjectCommand: vi.fn(),
-}));
+vi.mock("@aws-sdk/client-s3", () => {
+  const mockSend = vi.fn();
+  return {
+    S3Client: vi.fn(() => ({
+      send: mockSend,
+    })),
+    GetObjectCommand: vi.fn(),
+    HeadObjectCommand: vi.fn(),
+    __testMockSend: mockSend, // Export it for testing
+  };
+});
 
 vi.mock("@aws-sdk/s3-request-presigner", () => ({
   getSignedUrl: vi.fn(),
@@ -21,11 +28,19 @@ process.env.AWS_REGION = "us-east-1";
 import { GET } from "@/app/api/backups/download/route";
 
 describe("GET /api/backups/download", () => {
-  beforeEach(() => {
+  let mockSend: ReturnType<typeof vi.fn>;
+
+  beforeEach(async () => {
     vi.clearAllMocks();
+    // Get the mock send function from the mocked module
+    const mocked = await vi.importMock("@aws-sdk/client-s3");
+    mockSend = (mocked as { __testMockSend: ReturnType<typeof vi.fn> }).__testMockSend;
+    mockSend.mockReset();
     // Ensure env vars are set for each test
     process.env.BACKUP_S3_BUCKET = "test-bucket";
     process.env.AWS_REGION = "us-east-1";
+    // Mock HeadObjectCommand to succeed (file exists)
+    mockSend.mockResolvedValueOnce({});
   });
 
   it("redirects to signed URL", async () => {
@@ -39,6 +54,8 @@ describe("GET /api/backups/download", () => {
 
     expect(response.status).toBe(302);
     expect(response.headers.get("location")).toBe(mockSignedUrl);
+    // Verify HeadObjectCommand was called to check file existence
+    expect(mockSend).toHaveBeenCalled();
   });
 
   it("returns 400 when key is missing", async () => {
@@ -75,7 +92,8 @@ describe("GET /api/backups/download", () => {
   it("returns 500 when signing fails", async () => {
     // Ensure bucket is set
     process.env.BACKUP_S3_BUCKET = "test-bucket";
-    
+    // Mock HeadObjectCommand to succeed (file exists)
+    mockSend.mockResolvedValueOnce({});
     (getSignedUrl as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("Signing error"));
 
     const request = new NextRequest(

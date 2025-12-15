@@ -10,6 +10,35 @@ const s3Client = new S3Client({
   region: process.env.AWS_REGION || "us-east-2",
 });
 
+// Security: Explicitly handle unsupported HTTP methods
+export async function POST() {
+  return NextResponse.json(
+    { error: "Method Not Allowed. Use GET to list backups." },
+    { status: 405 }
+  );
+}
+
+export async function PUT() {
+  return NextResponse.json(
+    { error: "Method Not Allowed. Use GET to list backups." },
+    { status: 405 }
+  );
+}
+
+export async function PATCH() {
+  return NextResponse.json(
+    { error: "Method Not Allowed. Use GET to list backups." },
+    { status: 405 }
+  );
+}
+
+export async function DELETE() {
+  return NextResponse.json(
+    { error: "Method Not Allowed. Use GET to list backups." },
+    { status: 405 }
+  );
+}
+
 export async function GET() {
   const bucket = process.env.BACKUP_S3_BUCKET;
   const prefix = process.env.BACKUP_S3_PREFIX || "backups/"; // optional, e.g. "nightscout/"

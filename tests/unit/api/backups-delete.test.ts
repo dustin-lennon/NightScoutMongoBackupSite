@@ -9,6 +9,7 @@ vi.mock("@aws-sdk/client-s3", () => {
       send: mockSend,
     })),
     DeleteObjectCommand: vi.fn(),
+    HeadObjectCommand: vi.fn(),
     __testMockSend: mockSend, // Export it for testing
   };
 });
@@ -35,7 +36,9 @@ describe("DELETE /api/backups/delete", () => {
   });
 
   it("successfully deletes a backup file", async () => {
-    mockSend.mockResolvedValueOnce({});
+    // First call: HeadObjectCommand (file exists check) - succeeds
+    // Second call: DeleteObjectCommand (actual deletion) - succeeds
+    mockSend.mockResolvedValueOnce({}).mockResolvedValueOnce({});
 
     const request = new Request("http://localhost/api/backups/delete?key=backups/dexcom_20250101.tar.gz");
     const response = await DELETE(request);
@@ -44,7 +47,7 @@ describe("DELETE /api/backups/delete", () => {
     expect(response.status).toBe(200);
     expect(data.message).toContain("deleted successfully");
     expect(data.message).toContain("backups/dexcom_20250101.tar.gz");
-    expect(mockSend).toHaveBeenCalled();
+    expect(mockSend).toHaveBeenCalledTimes(2); // HeadObject + DeleteObject
   });
 
   it("returns 400 when key parameter is missing", async () => {
@@ -70,7 +73,9 @@ describe("DELETE /api/backups/delete", () => {
   });
 
   it("returns 500 when S3 delete fails", async () => {
-    mockSend.mockRejectedValueOnce(new Error("S3 delete error"));
+    // First call: HeadObjectCommand (file exists check) - succeeds
+    // Second call: DeleteObjectCommand (actual deletion) - fails
+    mockSend.mockResolvedValueOnce({}).mockRejectedValueOnce(new Error("S3 delete error"));
 
     const request = new Request("http://localhost/api/backups/delete?key=backups/test.tar.gz");
     const response = await DELETE(request);
@@ -78,11 +83,13 @@ describe("DELETE /api/backups/delete", () => {
 
     expect(response.status).toBe(500);
     expect(data.error).toContain("Failed to delete backup");
-    expect(mockSend).toHaveBeenCalled();
+    expect(mockSend).toHaveBeenCalledTimes(2); // HeadObject + DeleteObject
   });
 
   it("properly URL decodes the key parameter", async () => {
-    mockSend.mockResolvedValueOnce({});
+    // First call: HeadObjectCommand (file exists check) - succeeds
+    // Second call: DeleteObjectCommand (actual deletion) - succeeds
+    mockSend.mockResolvedValueOnce({}).mockResolvedValueOnce({});
 
     const encodedKey = encodeURIComponent("backups/dexcom_2025-01-01.tar.gz");
     const request = new Request(`http://localhost/api/backups/delete?key=${encodedKey}`);
@@ -91,11 +98,13 @@ describe("DELETE /api/backups/delete", () => {
 
     expect(response.status).toBe(200);
     expect(data.message).toContain("deleted successfully");
-    expect(mockSend).toHaveBeenCalled();
+    expect(mockSend).toHaveBeenCalledTimes(2); // HeadObject + DeleteObject
   });
 
   it("handles special characters in key parameter", async () => {
-    mockSend.mockResolvedValueOnce({});
+    // First call: HeadObjectCommand (file exists check) - succeeds
+    // Second call: DeleteObjectCommand (actual deletion) - succeeds
+    mockSend.mockResolvedValueOnce({}).mockResolvedValueOnce({});
 
     const specialKey = "backups/folder with spaces/file.tar.gz";
     const encodedKey = encodeURIComponent(specialKey);
@@ -105,7 +114,7 @@ describe("DELETE /api/backups/delete", () => {
 
     expect(response.status).toBe(200);
     expect(data.message).toContain("deleted successfully");
-    expect(mockSend).toHaveBeenCalled();
+    expect(mockSend).toHaveBeenCalledTimes(2); // HeadObject + DeleteObject
   });
 });
 

@@ -31,6 +31,7 @@
     "next": "^16.0.6",
     "next-auth": "^4.24.7",
     "next-themes": "^0.3.0",
+    "pm2": "^5.3.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
@@ -74,5 +75,16 @@
     "*.{js,jsx}": [
       "eslint --fix"
     ]
+  },
+  "overrides": {
+    "require-in-the-middle": "^8.0.1",
+    "@pm2/io": {
+      "require-in-the-middle": "^8.0.1"
+    },
+    "pm2": {
+      "@pm2/io": {
+        "require-in-the-middle": "^8.0.1"
+      }
+    }
   }
 }

@@ -9,6 +9,13 @@ const appVersion = packageJson.version || 'unknown';
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Handle require-in-the-middle version conflict
+  // This tells Next.js to externalize the package and use the version from node_modules
+  serverExternalPackages: [
+    'require-in-the-middle',
+    'pm2', // PM2 cannot be bundled - it contains shell scripts and native modules
+    'pm2-deploy', // PM2 deploy dependency
+  ],
   // Inject version as environment variable at build time
   env: {
     NEXT_PUBLIC_VERSION: appVersion,
