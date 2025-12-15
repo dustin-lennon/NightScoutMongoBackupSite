@@ -1,15 +1,13 @@
 import { NextResponse } from "next/server";
-import { DeleteObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { createMethodHandlers } from "@/lib/api-utils";
+import { createS3Client } from "@/lib/s3-utils";
+import { isAwsNotFoundError } from "@/lib/validation-utils";
 import {
-  createS3Client,
-  checkS3Config,
-  getS3Prefix,
-} from "@/lib/s3-utils";
-import {
-  validateS3Key,
-  isAwsNotFoundError,
-} from "@/lib/validation-utils";
+  validateS3KeyRequest,
+  checkS3ObjectExists,
+  createS3NotFoundResponse,
+} from "@/lib/s3-handlers";
 
 // AWS SDK will automatically detect the region from the Lambda execution environment
 // Fallback to us-east-2 for local development
@@ -23,60 +21,24 @@ export const PUT = methodHandlers.PUT;
 export const PATCH = methodHandlers.PATCH;
 
 export async function DELETE(request: Request) {
-  const s3Config = checkS3Config();
-  if (!s3Config.configured) {
-    return NextResponse.json(
-      { error: s3Config.error },
-      { status: 500 }
-    );
+  const validation = await validateS3KeyRequest(request);
+  if (!validation.valid) {
+    return validation.response;
   }
 
-  const bucket = process.env.BACKUP_S3_BUCKET!;
-
-  const { searchParams } = new URL(request.url);
-  const key = searchParams.get("key");
-
-  if (!key) {
-    return NextResponse.json(
-      { error: "Missing required 'key' query parameter." },
-      { status: 400 }
-    );
-  }
-
-  // Security: Validate key to prevent path traversal attacks
-  const prefix = getS3Prefix();
-  const keyValidation = validateS3Key(key, prefix);
-  if (!keyValidation.valid) {
-    return NextResponse.json(
-      { error: keyValidation.error },
-      { status: 400 }
-    );
-  }
+  const { bucket, key } = validation;
 
   try {
     // First, check if the object exists using HeadObjectCommand
     // This allows us to return a proper JSON 404 if the file doesn't exist
-    try {
-      const headCommand = new HeadObjectCommand({
-        Bucket: bucket,
-        Key: key
-      });
-      await s3Client.send(headCommand);
-    } catch (headErr: unknown) {
-      if (isAwsNotFoundError(headErr)) {
-        return NextResponse.json(
-          { error: `Backup file not found: ${key}` },
-          {
-            status: 404,
-            headers: {
-              "Content-Type": "application/json",
-            },
-          }
-        );
-      }
-
-      // If it's a different error, re-throw to be handled below
-      throw headErr;
+    const notFoundResponse = await checkS3ObjectExists(
+      s3Client,
+      bucket,
+      key,
+      "backups/delete"
+    );
+    if (notFoundResponse) {
+      return notFoundResponse;
     }
 
     // Object exists, proceed with deletion
@@ -96,15 +58,7 @@ export async function DELETE(request: Request) {
 
     // Check if it's a "not found" error that wasn't caught above
     if (isAwsNotFoundError(err)) {
-      return NextResponse.json(
-        { error: `Backup file not found: ${key}` },
-        {
-          status: 404,
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      return createS3NotFoundResponse(key);
     }
 
     return NextResponse.json(
