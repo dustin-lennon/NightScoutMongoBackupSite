@@ -1,3 +1,10 @@
+## [2.0.2](https://github.com/Stelth2000-Inc/NightScoutMongoBackupSite/compare/v2.0.1...v2.0.2) (2025-12-15)
+
+
+### Bug Fixes
+
+* update S3Client mocks to use class constructors and fix backup-manager test ([cf4e1a0](https://github.com/Stelth2000-Inc/NightScoutMongoBackupSite/commit/cf4e1a0d13bafc1c00f2781823bcfb4689230a49))
+
 ## [2.0.1](https://github.com/Stelth2000-Inc/NightScoutMongoBackupSite/compare/v2.0.0...v2.0.1) (2025-12-15)
 
 
