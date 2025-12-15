@@ -79,6 +79,7 @@ const waitForFileToAppear = async (filename: string) => {
 describe("BackupManager", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockFetch.mockReset();
     mockUseSession.mockReturnValue(DEFAULT_AUTH_SESSION as never);
   });
 
@@ -461,12 +462,16 @@ describe("BackupManager", () => {
 
     render(<BackupManager />);
 
+    // Wait for fetch to be called and file to appear
     await waitFor(() => {
-      // Should display without "backups/" prefix
+      expect(mockFetch).toHaveBeenCalled();
       expect(screen.getByText("dexcom_20250101.tar.gz")).toBeInTheDocument();
-      // Should NOT display with prefix
-      expect(screen.queryByText("backups/dexcom_20250101.tar.gz")).not.toBeInTheDocument();
     }, { timeout: TEST_TIMEOUT });
+
+    // Should display without "backups/" prefix
+    expect(screen.getByText("dexcom_20250101.tar.gz")).toBeInTheDocument();
+    // Should NOT display with prefix
+    expect(screen.queryByText("backups/dexcom_20250101.tar.gz")).not.toBeInTheDocument();
   });
 
   it.skip("only loads backups when authenticated", async () => {

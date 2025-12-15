@@ -4,10 +4,15 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 vi.mock("@aws-sdk/client-s3", () => {
   const mockSend = vi.fn();
+  // Create a class constructor for S3Client
+  // Use a getter to ensure all instances share the same mockSend
+  class MockS3Client {
+    get send() {
+      return mockSend;
+    }
+  }
   return {
-    S3Client: vi.fn(() => ({
-      send: mockSend,
-    })),
+    S3Client: MockS3Client,
     ListObjectsV2Command: vi.fn(),
     __testMockSend: mockSend, // Export it for testing
   };
