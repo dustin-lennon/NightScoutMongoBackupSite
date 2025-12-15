@@ -1,3 +1,10 @@
+## [2.0.4](https://github.com/Stelth2000-Inc/NightScoutMongoBackupSite/compare/v2.0.3...v2.0.4) (2025-12-15)
+
+
+### Bug Fixes
+
+* flatten nested overrides for Bun compatibility ([7bbf2a5](https://github.com/Stelth2000-Inc/NightScoutMongoBackupSite/commit/7bbf2a5bac612e09d723ed8d1980beaf536ae094))
+
 ## [2.0.3](https://github.com/Stelth2000-Inc/NightScoutMongoBackupSite/compare/v2.0.2...v2.0.3) (2025-12-15)
 
 
