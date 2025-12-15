@@ -75,9 +75,9 @@ export async function GET(request: Request) {
         { status: 500 }
       );
     }
-  } catch (outerErr) {
+  } catch (error_) {
     // Ultimate fallback - ensure we ALWAYS return JSON, never let Next.js show HTML error page
-    console.error("[backups/download] Unexpected outer error:", outerErr);
+    console.error("[backups/download] Unexpected outer error:", error_);
     return NextResponse.json(
       { error: "An unexpected error occurred while processing the download request." },
       { 

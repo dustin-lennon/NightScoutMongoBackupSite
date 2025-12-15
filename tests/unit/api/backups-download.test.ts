@@ -185,5 +185,34 @@ describe("GET /api/backups/download", () => {
       expect(data.error).toContain("not found");
     });
   });
+
+  describe("Error handling", () => {
+    it("handles errors when checkS3ObjectExists throws unexpected error", async () => {
+      // Mock HeadObjectCommand to throw a non-404 error
+      mockSend.mockReset();
+      const unexpectedError = new Error("Access denied");
+      mockSend.mockRejectedValueOnce(unexpectedError);
+
+      const request = new NextRequest("http://localhost:3000/api/backups/download?key=backups/test.tar.gz");
+      const response = await GET(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(500);
+      expect(data.error).toContain("Failed to generate download URL");
+    });
+
+    it("handles errors when getSignedUrl throws", async () => {
+      mockSend.mockReset();
+      mockSend.mockResolvedValueOnce({}); // HeadObject succeeds
+      (getSignedUrl as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("Signing failed"));
+
+      const request = new NextRequest("http://localhost:3000/api/backups/download?key=backups/test.tar.gz");
+      const response = await GET(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(500);
+      expect(data.error).toContain("Failed to generate download URL");
+    });
+  });
 });
 

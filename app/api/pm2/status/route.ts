@@ -101,7 +101,6 @@ export const PATCH = methodHandlers.PATCH;
 export const DELETE = methodHandlers.DELETE;
 
 export async function GET() {
-  let pm2Connected = false;
   try {
     // Check if PM2 is available (it might not be in all environments)
     try {
@@ -117,14 +116,12 @@ export async function GET() {
 
     // Connect to PM2 daemon using programmatic API (no shell execution)
     await connectToPM2();
-    pm2Connected = true;
 
     // Get process list
     const processes = await listPM2Processes();
 
     // Disconnect from PM2
     await disconnectFromPM2();
-    pm2Connected = false;
 
     // Filter for Discord bot (assuming it's named something like "nightscout-backup-bot" or contains "bot")
     const botProcesses = processes.filter((proc) =>
@@ -170,12 +167,11 @@ export async function GET() {
     return NextResponse.json({ processes: status });
   } catch (err) {
     // Ensure we disconnect even on error
-    if (pm2Connected) {
-      try {
-        await disconnectFromPM2();
-      } catch {
-        // Ignore disconnect errors
-      }
+    // disconnectFromPM2 handles errors gracefully, so we can always call it
+    try {
+      await disconnectFromPM2();
+    } catch {
+      // Ignore disconnect errors
     }
 
     console.error("[pm2/status] Error getting PM2 status", err);
