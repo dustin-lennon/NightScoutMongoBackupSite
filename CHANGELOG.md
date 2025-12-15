@@ -1,3 +1,10 @@
+## [2.0.1](https://github.com/Stelth2000-Inc/NightScoutMongoBackupSite/compare/v2.0.0...v2.0.1) (2025-12-15)
+
+
+### Bug Fixes
+
+* adding file security ([520a6da](https://github.com/Stelth2000-Inc/NightScoutMongoBackupSite/commit/520a6da9bea1298ab364967a768c6f242d66a030))
+
 # [2.0.0](https://github.com/Stelth2000-Inc/NightScoutMongoBackupSite/compare/v1.5.0...v2.0.0) (2025-12-15)
 
 
