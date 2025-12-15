@@ -25,7 +25,7 @@ process.env.BACKUP_S3_BUCKET = "test-bucket";
 process.env.AWS_REGION = "us-east-1";
 
 // Import route after env vars are set
-import { GET } from "@/app/api/backups/download/route";
+import { GET, POST, PUT, PATCH, DELETE } from "@/app/api/backups/download/route";
 
 describe("GET /api/backups/download", () => {
   let mockSend: ReturnType<typeof vi.fn>;
@@ -104,6 +104,86 @@ describe("GET /api/backups/download", () => {
 
     expect(response.status).toBe(500);
     expect(data.error).toContain("Failed to generate download URL");
+  });
+
+  describe("Method handlers", () => {
+    it("POST returns 405 Method Not Allowed", async () => {
+      const response = await POST();
+      const data = await response.json();
+      expect(response.status).toBe(405);
+      expect(data.error).toContain("Use GET");
+    });
+
+    it("PUT returns 405 Method Not Allowed", async () => {
+      const response = await PUT();
+      const data = await response.json();
+      expect(response.status).toBe(405);
+      expect(data.error).toContain("Use GET");
+    });
+
+    it("PATCH returns 405 Method Not Allowed", async () => {
+      const response = await PATCH();
+      const data = await response.json();
+      expect(response.status).toBe(405);
+      expect(data.error).toContain("Use GET");
+    });
+
+    it("DELETE returns 405 Method Not Allowed", async () => {
+      const response = await DELETE();
+      const data = await response.json();
+      expect(response.status).toBe(405);
+      expect(data.error).toContain("Use GET");
+    });
+  });
+
+  describe("Path traversal validation", () => {
+    it("rejects keys with ..", async () => {
+      const request = new NextRequest("http://localhost:3000/api/backups/download?key=backups/../etc/passwd");
+      const response = await GET(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.error).toContain("path traversal");
+    });
+
+    it("rejects keys that don't start with prefix", async () => {
+      const request = new NextRequest("http://localhost:3000/api/backups/download?key=etc/passwd");
+      const response = await GET(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.error).toContain("must start with configured prefix");
+    });
+
+    it("accepts valid keys", async () => {
+      mockSend.mockResolvedValueOnce({});
+      (getSignedUrl as ReturnType<typeof vi.fn>).mockResolvedValue("https://signed-url");
+      const request = new NextRequest("http://localhost:3000/api/backups/download?key=backups/valid-file.tar.gz");
+      const response = await GET(request);
+
+      expect(response.status).toBe(302);
+    });
+  });
+
+  describe("404 handling", () => {
+    it("returns 404 when file does not exist", async () => {
+      // Reset mocks
+      mockSend.mockReset();
+      
+      const notFoundError = {
+        name: "NoSuchKey",
+        $metadata: { httpStatusCode: 404 },
+      };
+      // First call is HeadObjectCommand which fails
+      mockSend.mockRejectedValueOnce(notFoundError);
+
+      const request = new NextRequest("http://localhost:3000/api/backups/download?key=backups/nonexistent.tar.gz");
+      const response = await GET(request);
+      
+      expect(response.status).toBe(404);
+      const data = await response.json();
+      expect(data.error).toContain("not found");
+    });
   });
 });
 

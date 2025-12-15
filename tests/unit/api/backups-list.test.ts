@@ -19,7 +19,7 @@ process.env.BACKUP_S3_PREFIX = "backups/";
 process.env.AWS_REGION = "us-east-1";
 
 // Import route after env vars are set
-import { GET } from "@/app/api/backups/list/route";
+import { GET, POST, PUT, PATCH, DELETE } from "@/app/api/backups/list/route";
 
 describe("GET /api/backups/list", () => {
   let mockSend: ReturnType<typeof vi.fn>;
@@ -82,5 +82,46 @@ describe("GET /api/backups/list", () => {
 
     expect(response.status).toBe(500);
     expect(data.error).toContain("Failed to list backups");
+  });
+
+  describe("Method handlers", () => {
+    it("POST returns 405 Method Not Allowed", async () => {
+      const response = await POST();
+      const data = await response.json();
+      expect(response.status).toBe(405);
+      expect(data.error).toContain("Use GET");
+    });
+
+    it("PUT returns 405 Method Not Allowed", async () => {
+      const response = await PUT();
+      const data = await response.json();
+      expect(response.status).toBe(405);
+      expect(data.error).toContain("Use GET");
+    });
+
+    it("PATCH returns 405 Method Not Allowed", async () => {
+      const response = await PATCH();
+      const data = await response.json();
+      expect(response.status).toBe(405);
+      expect(data.error).toContain("Use GET");
+    });
+
+    it("DELETE returns 405 Method Not Allowed", async () => {
+      const response = await DELETE();
+      const data = await response.json();
+      expect(response.status).toBe(405);
+      expect(data.error).toContain("Use GET");
+    });
+  });
+
+  it("returns 500 when bucket is not configured", async () => {
+    delete process.env.BACKUP_S3_BUCKET;
+
+    const response = await GET();
+    const data = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(data.error).toContain("S3 bucket not configured");
+    expect(mockSend).not.toHaveBeenCalled();
   });
 });

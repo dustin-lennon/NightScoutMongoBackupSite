@@ -1,50 +1,37 @@
 import { NextResponse } from "next/server";
-import { S3Client, DeleteObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
+import { createMethodHandlers } from "@/lib/api-utils";
+import {
+  createS3Client,
+  checkS3Config,
+  getS3Prefix,
+} from "@/lib/s3-utils";
+import {
+  validateS3Key,
+  isAwsNotFoundError,
+} from "@/lib/validation-utils";
 
 // AWS SDK will automatically detect the region from the Lambda execution environment
 // Fallback to us-east-2 for local development
-const s3Client = new S3Client({
-  region: process.env.AWS_REGION || "us-east-2",
-});
+const s3Client = createS3Client();
 
 // Security: Explicitly handle unsupported HTTP methods
-export async function GET() {
-  return NextResponse.json(
-    { error: "Method Not Allowed. Use DELETE to delete a backup." },
-    { status: 405 }
-  );
-}
-
-export async function POST() {
-  return NextResponse.json(
-    { error: "Method Not Allowed. Use DELETE to delete a backup." },
-    { status: 405 }
-  );
-}
-
-export async function PUT() {
-  return NextResponse.json(
-    { error: "Method Not Allowed. Use DELETE to delete a backup." },
-    { status: 405 }
-  );
-}
-
-export async function PATCH() {
-  return NextResponse.json(
-    { error: "Method Not Allowed. Use DELETE to delete a backup." },
-    { status: 405 }
-  );
-}
+const methodHandlers = createMethodHandlers("DELETE");
+export const GET = methodHandlers.GET;
+export const POST = methodHandlers.POST;
+export const PUT = methodHandlers.PUT;
+export const PATCH = methodHandlers.PATCH;
 
 export async function DELETE(request: Request) {
-  const bucket = process.env.BACKUP_S3_BUCKET;
-  
-  if (!bucket) {
+  const s3Config = checkS3Config();
+  if (!s3Config.configured) {
     return NextResponse.json(
-      { error: "S3 bucket not configured on server." },
+      { error: s3Config.error },
       { status: 500 }
     );
   }
+
+  const bucket = process.env.BACKUP_S3_BUCKET!;
 
   const { searchParams } = new URL(request.url);
   const key = searchParams.get("key");
@@ -57,19 +44,11 @@ export async function DELETE(request: Request) {
   }
 
   // Security: Validate key to prevent path traversal attacks
-  // Ensure key starts with the expected prefix and doesn't contain dangerous patterns
-  const prefix = process.env.BACKUP_S3_PREFIX || "backups/";
-  if (!key.startsWith(prefix)) {
+  const prefix = getS3Prefix();
+  const keyValidation = validateS3Key(key, prefix);
+  if (!keyValidation.valid) {
     return NextResponse.json(
-      { error: "Invalid key: must start with configured prefix." },
-      { status: 400 }
-    );
-  }
-
-  // Prevent path traversal attempts (../, ..\, etc.)
-  if (key.includes("..") || key.includes("//") || key.includes("\\\\")) {
-    return NextResponse.json(
-      { error: "Invalid key: path traversal detected." },
+      { error: keyValidation.error },
       { status: 400 }
     );
   }
@@ -84,39 +63,18 @@ export async function DELETE(request: Request) {
       });
       await s3Client.send(headCommand);
     } catch (headErr: unknown) {
-      // AWS SDK v3 error structure: errors have a 'name' property and '$metadata'
-      const errorName = headErr && typeof headErr === 'object' && 'name' in headErr
-        ? (headErr as { name?: string }).name
-        : null;
-      
-      const errorCode = headErr && typeof headErr === 'object' && '$metadata' in headErr
-        ? (headErr as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode
-        : null;
-      
-      const errorMessage = headErr instanceof Error ? headErr.message : String(headErr);
-      
-      // Check for NoSuchKey error or 404 status code
-      const isNotFound = 
-        errorName === "NoSuchKey" || 
-        errorName === "NotFound" || 
-        errorCode === 404 ||
-        errorMessage.includes("NoSuchKey") ||
-        errorMessage.includes("does not exist") ||
-        errorMessage.includes("The specified key does not exist") ||
-        (errorCode && errorCode >= 400 && errorCode < 500);
-      
-      if (isNotFound) {
+      if (isAwsNotFoundError(headErr)) {
         return NextResponse.json(
           { error: `Backup file not found: ${key}` },
-          { 
+          {
             status: 404,
             headers: {
-              "Content-Type": "application/json"
-            }
+              "Content-Type": "application/json",
+            },
           }
         );
       }
-      
+
       // If it's a different error, re-throw to be handled below
       throw headErr;
     }
@@ -135,27 +93,20 @@ export async function DELETE(request: Request) {
     );
   } catch (err) {
     console.error("[backups/delete] Error deleting S3 object", err);
-    
+
     // Check if it's a "not found" error that wasn't caught above
-    if (err && typeof err === 'object') {
-      const errorName = 'name' in err ? (err as { name?: string }).name : null;
-      const errorCode = '$metadata' in err 
-        ? (err as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode
-        : null;
-      
-      if (errorName === "NoSuchKey" || errorName === "NotFound" || errorCode === 404) {
-        return NextResponse.json(
-          { error: `Backup file not found: ${key}` },
-          { 
-            status: 404,
-            headers: {
-              "Content-Type": "application/json"
-            }
-          }
-        );
-      }
+    if (isAwsNotFoundError(err)) {
+      return NextResponse.json(
+        { error: `Backup file not found: ${key}` },
+        {
+          status: 404,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
     }
-    
+
     return NextResponse.json(
       { error: "Failed to delete backup from S3." },
       { status: 500 }

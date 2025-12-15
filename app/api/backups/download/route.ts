@@ -1,6 +1,16 @@
 import { NextResponse } from "next/server";
-import { S3Client, GetObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
+import { GetObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { createMethodHandlers } from "@/lib/api-utils";
+import {
+  createS3Client,
+  checkS3Config,
+  getS3Prefix,
+} from "@/lib/s3-utils";
+import {
+  validateS3Key,
+  isAwsNotFoundError,
+} from "@/lib/validation-utils";
 
 // Ensure this route runs in Node.js runtime (not Edge)
 export const runtime = "nodejs";
@@ -8,49 +18,26 @@ export const dynamic = "force-dynamic";
 
 // AWS SDK will automatically detect the region from the Lambda execution environment
 // Fallback to us-east-2 for local development
-const s3Client = new S3Client({
-  region: process.env.AWS_REGION || "us-east-2",
-});
+const s3Client = createS3Client();
 
 // Security: Explicitly handle unsupported HTTP methods
-export async function POST() {
-  return NextResponse.json(
-    { error: "Method Not Allowed. Use GET to download a backup." },
-    { status: 405 }
-  );
-}
-
-export async function PUT() {
-  return NextResponse.json(
-    { error: "Method Not Allowed. Use GET to download a backup." },
-    { status: 405 }
-  );
-}
-
-export async function PATCH() {
-  return NextResponse.json(
-    { error: "Method Not Allowed. Use GET to download a backup." },
-    { status: 405 }
-  );
-}
-
-export async function DELETE() {
-  return NextResponse.json(
-    { error: "Method Not Allowed. Use GET to download a backup." },
-    { status: 405 }
-  );
-}
+const methodHandlers = createMethodHandlers("GET");
+export const POST = methodHandlers.POST;
+export const PUT = methodHandlers.PUT;
+export const PATCH = methodHandlers.PATCH;
+export const DELETE = methodHandlers.DELETE;
 
 export async function GET(request: Request) {
   try {
-    const bucket = process.env.BACKUP_S3_BUCKET;
-    
-    if (!bucket) {
+    const s3Config = checkS3Config();
+    if (!s3Config.configured) {
       return NextResponse.json(
-        { error: "S3 bucket not configured on server." },
+        { error: s3Config.error },
         { status: 500 }
       );
     }
+
+    const bucket = process.env.BACKUP_S3_BUCKET!;
 
     const { searchParams } = new URL(request.url);
     const key = searchParams.get("key");
@@ -63,19 +50,11 @@ export async function GET(request: Request) {
     }
 
     // Security: Validate key to prevent path traversal attacks
-    // Ensure key starts with the expected prefix and doesn't contain dangerous patterns
-    const prefix = process.env.BACKUP_S3_PREFIX || "backups/";
-    if (!key.startsWith(prefix)) {
+    const prefix = getS3Prefix();
+    const keyValidation = validateS3Key(key, prefix);
+    if (!keyValidation.valid) {
       return NextResponse.json(
-        { error: "Invalid key: must start with configured prefix." },
-        { status: 400 }
-      );
-    }
-
-    // Prevent path traversal attempts (../, ..\, etc.)
-    if (key.includes("..") || key.includes("//") || key.includes("\\\\")) {
-      return NextResponse.json(
-        { error: "Invalid key: path traversal detected." },
+        { error: keyValidation.error },
         { status: 400 }
       );
     }
@@ -90,51 +69,23 @@ export async function GET(request: Request) {
         });
         await s3Client.send(headCommand);
       } catch (headErr: unknown) {
-        // AWS SDK v3 error structure: errors have a 'name' property and '$metadata'
-        // Check multiple ways to detect NoSuchKey/NotFound errors
-        const errorName = headErr && typeof headErr === 'object' && 'name' in headErr
-          ? (headErr as { name?: string }).name
-          : null;
-        
-        const errorCode = headErr && typeof headErr === 'object' && '$metadata' in headErr
-          ? (headErr as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode
-          : null;
-        
-        const errorMessage = headErr instanceof Error ? headErr.message : String(headErr);
-        
-        // Check for NoSuchKey error or 404 status code
-        // AWS SDK v3 uses "NoSuchKey" as the error name
-        // Also check for common error patterns - be very permissive here
-        const isNotFound = 
-          errorName === "NoSuchKey" || 
-          errorName === "NotFound" || 
-          errorCode === 404 ||
-          errorMessage.includes("NoSuchKey") ||
-          errorMessage.includes("does not exist") ||
-          errorMessage.includes("The specified key does not exist") ||
-          errorMessage.includes("not found") ||
-          (errorCode && errorCode >= 400 && errorCode < 500); // Any 4xx error from S3
-        
-        if (isNotFound) {
+        if (isAwsNotFoundError(headErr)) {
           return NextResponse.json(
             { error: `Backup file not found: ${key}` },
-            { 
+            {
               status: 404,
               headers: {
-                "Content-Type": "application/json"
-              }
+                "Content-Type": "application/json",
+              },
             }
           );
         }
-        
+
         // Log unexpected errors for debugging
         console.error("[backups/download] Unexpected HeadObject error:", {
           error: headErr,
-          name: errorName,
-          code: errorCode,
-          message: errorMessage
         });
-        
+
         // If it's a different error, re-throw to be handled below
         throw headErr;
       }
@@ -154,36 +105,20 @@ export async function GET(request: Request) {
       return NextResponse.redirect(signedUrl, { status: 302 });
     } catch (err) {
       console.error("[backups/download] Error generating signed URL", err);
-      
-      // AWS SDK v3 error structure
-      if (err && typeof err === 'object') {
-        const errorName = 'name' in err ? (err as { name?: string }).name : null;
-        const errorCode = '$metadata' in err 
-          ? (err as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode
-          : null;
-        const errorMessage = err instanceof Error ? err.message : String(err);
-        
-        // S3 returns "NoSuchKey" when object doesn't exist
-        // Be very permissive - if it's any 4xx error, treat as not found
-        if (errorName === "NoSuchKey" || errorName === "NotFound" || errorCode === 404 || (errorCode && errorCode >= 400 && errorCode < 500)) {
-          return NextResponse.json(
-            { error: `Backup file not found: ${key}` },
-            { 
-              status: 404,
-              headers: {
-                "Content-Type": "application/json"
-              }
-            }
-          );
-        }
-        
-        // Generic AWS error
+
+      // Check if it's a "not found" error
+      if (isAwsNotFoundError(err)) {
         return NextResponse.json(
-          { error: `Failed to generate download URL: ${errorMessage}` },
-          { status: 500 }
+          { error: `Backup file not found: ${key}` },
+          {
+            status: 404,
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
         );
       }
-      
+
       // Generic error fallback
       const errorMessage = err instanceof Error ? err.message : String(err);
       return NextResponse.json(

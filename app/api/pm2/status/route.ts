@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createMethodHandlers } from "@/lib/api-utils";
 
 // Force this route to run on Node.js runtime (not edge)
 export const runtime = "nodejs";
@@ -93,33 +94,11 @@ async function disconnectFromPM2(): Promise<void> {
 }
 
 // Security: Explicitly handle unsupported HTTP methods
-export async function POST() {
-  return NextResponse.json(
-    { error: "Method Not Allowed. Use GET to get PM2 status." },
-    { status: 405 }
-  );
-}
-
-export async function PUT() {
-  return NextResponse.json(
-    { error: "Method Not Allowed. Use GET to get PM2 status." },
-    { status: 405 }
-  );
-}
-
-export async function PATCH() {
-  return NextResponse.json(
-    { error: "Method Not Allowed. Use GET to get PM2 status." },
-    { status: 405 }
-  );
-}
-
-export async function DELETE() {
-  return NextResponse.json(
-    { error: "Method Not Allowed. Use GET to get PM2 status." },
-    { status: 405 }
-  );
-}
+const methodHandlers = createMethodHandlers("GET");
+export const POST = methodHandlers.POST;
+export const PUT = methodHandlers.PUT;
+export const PATCH = methodHandlers.PATCH;
+export const DELETE = methodHandlers.DELETE;
 
 export async function GET() {
   let pm2Connected = false;

@@ -19,7 +19,7 @@ process.env.BACKUP_S3_BUCKET = "test-bucket";
 process.env.AWS_REGION = "us-east-1";
 
 // Import route after env vars are set
-import { DELETE } from "@/app/api/backups/delete/route";
+import { DELETE, GET, POST, PUT, PATCH } from "@/app/api/backups/delete/route";
 
 describe("DELETE /api/backups/delete", () => {
   let mockSend: ReturnType<typeof vi.fn>;
@@ -115,6 +115,123 @@ describe("DELETE /api/backups/delete", () => {
     expect(response.status).toBe(200);
     expect(data.message).toContain("deleted successfully");
     expect(mockSend).toHaveBeenCalledTimes(2); // HeadObject + DeleteObject
+  });
+
+  describe("Method handlers", () => {
+    it("GET returns 405 Method Not Allowed", async () => {
+      const response = await GET();
+      const data = await response.json();
+      expect(response.status).toBe(405);
+      expect(data.error).toContain("Use DELETE");
+    });
+
+    it("POST returns 405 Method Not Allowed", async () => {
+      const response = await POST();
+      const data = await response.json();
+      expect(response.status).toBe(405);
+      expect(data.error).toContain("Use DELETE");
+    });
+
+    it("PUT returns 405 Method Not Allowed", async () => {
+      const response = await PUT();
+      const data = await response.json();
+      expect(response.status).toBe(405);
+      expect(data.error).toContain("Use DELETE");
+    });
+
+    it("PATCH returns 405 Method Not Allowed", async () => {
+      const response = await PATCH();
+      const data = await response.json();
+      expect(response.status).toBe(405);
+      expect(data.error).toContain("Use DELETE");
+    });
+  });
+
+  describe("Path traversal validation", () => {
+    it("rejects keys with ..", async () => {
+      const request = new Request("http://localhost/api/backups/delete?key=backups/../etc/passwd");
+      const response = await DELETE(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.error).toContain("path traversal");
+      expect(mockSend).not.toHaveBeenCalled();
+    });
+
+    it("rejects keys with //", async () => {
+      const request = new Request("http://localhost/api/backups/delete?key=backups//etc/passwd");
+      const response = await DELETE(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.error).toContain("path traversal");
+      expect(mockSend).not.toHaveBeenCalled();
+    });
+
+    it("rejects keys that don't start with prefix", async () => {
+      const request = new Request("http://localhost/api/backups/delete?key=etc/passwd");
+      const response = await DELETE(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.error).toContain("must start with configured prefix");
+      expect(mockSend).not.toHaveBeenCalled();
+    });
+
+    it("accepts valid keys", async () => {
+      mockSend.mockResolvedValueOnce({}).mockResolvedValueOnce({});
+      const request = new Request("http://localhost/api/backups/delete?key=backups/valid-file.tar.gz");
+      const response = await DELETE(request);
+
+      expect(response.status).toBe(200);
+      expect(mockSend).toHaveBeenCalled();
+    });
+  });
+
+  describe("404 handling", () => {
+    it("returns 404 when file does not exist", async () => {
+      const notFoundError = {
+        name: "NoSuchKey",
+        $metadata: { httpStatusCode: 404 },
+      };
+      mockSend.mockRejectedValueOnce(notFoundError);
+
+      const request = new Request("http://localhost/api/backups/delete?key=backups/nonexistent.tar.gz");
+      const response = await DELETE(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(404);
+      expect(data.error).toContain("not found");
+    });
+
+    it("handles NotFound error name", async () => {
+      const notFoundError = {
+        name: "NotFound",
+        $metadata: { httpStatusCode: 404 },
+      };
+      mockSend.mockRejectedValueOnce(notFoundError);
+
+      const request = new Request("http://localhost/api/backups/delete?key=backups/nonexistent.tar.gz");
+      const response = await DELETE(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(404);
+      expect(data.error).toContain("not found");
+    });
+
+    it("handles 404 status code", async () => {
+      const notFoundError = {
+        $metadata: { httpStatusCode: 404 },
+      };
+      mockSend.mockRejectedValueOnce(notFoundError);
+
+      const request = new Request("http://localhost/api/backups/delete?key=backups/nonexistent.tar.gz");
+      const response = await DELETE(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(404);
+      expect(data.error).toContain("not found");
+    });
   });
 });
 
