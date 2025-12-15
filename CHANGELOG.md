@@ -1,3 +1,10 @@
+## [2.0.3](https://github.com/Stelth2000-Inc/NightScoutMongoBackupSite/compare/v2.0.2...v2.0.3) (2025-12-15)
+
+
+### Bug Fixes
+
+* resolve workflow warnings ([0b74a83](https://github.com/Stelth2000-Inc/NightScoutMongoBackupSite/commit/0b74a83632929f725c2411b2fa11560d0320b65e))
+
 ## [2.0.2](https://github.com/Stelth2000-Inc/NightScoutMongoBackupSite/compare/v2.0.1...v2.0.2) (2025-12-15)
 
 
