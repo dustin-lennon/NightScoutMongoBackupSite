@@ -1,3 +1,34 @@
+## [2.0.1](https://github.com/Stelth2000-Inc/NightScoutMongoBackupSite/compare/v2.0.0...v2.0.1) (2025-12-15)
+
+
+### Bug Fixes
+
+* adding file security ([520a6da](https://github.com/Stelth2000-Inc/NightScoutMongoBackupSite/commit/520a6da9bea1298ab364967a768c6f242d66a030))
+
+# [2.0.0](https://github.com/Stelth2000-Inc/NightScoutMongoBackupSite/compare/v1.5.0...v2.0.0) (2025-12-15)
+
+
+### Bug Fixes
+
+* enable coverage tracking for proxy.ts ([e2b2339](https://github.com/Stelth2000-Inc/NightScoutMongoBackupSite/commit/e2b233909b38a527acc238ba9c25297a5da0f6cc))
+* include proxy.ts in coverage reporting ([f203a4b](https://github.com/Stelth2000-Inc/NightScoutMongoBackupSite/commit/f203a4b5b434ca9f59731b4d656e0ff84a4182ec))
+* resolve linter errors in pm2-status tests ([ff89dd0](https://github.com/Stelth2000-Inc/NightScoutMongoBackupSite/commit/ff89dd0d39619731c778c7ff17f61fbb9d9077a1))
+* resolve security vulnerabilities and improve API error handling ([c9a4c27](https://github.com/Stelth2000-Inc/NightScoutMongoBackupSite/commit/c9a4c274ca4f65ec20f4a53fa1ff5ad1b7893faf))
+* resolve SonarCloud code quality issues ([e3afc35](https://github.com/Stelth2000-Inc/NightScoutMongoBackupSite/commit/e3afc352e7a20f35af1c279c625f63e475ef5a1a))
+* resolve SonarQube configuration ([8190869](https://github.com/Stelth2000-Inc/NightScoutMongoBackupSite/commit/819086965da3e0f37c4bbceb364d1ea577957bf9))
+* use npm for CI installs to support nested overrides ([9a3e8ce](https://github.com/Stelth2000-Inc/NightScoutMongoBackupSite/commit/9a3e8ce4ef3592195f5192683e4857b6290a90e9))
+* workflow issues ([7f4ab96](https://github.com/Stelth2000-Inc/NightScoutMongoBackupSite/commit/7f4ab96c6e977392effeea064512b7b9e2fcc7f6))
+
+
+### Features
+
+* add Python Backup API key authentication and update deployment workflow ([e33b609](https://github.com/Stelth2000-Inc/NightScoutMongoBackupSite/commit/e33b609a1e3514c00387a0d765903063d2a77494))
+
+
+### BREAKING CHANGES
+
+* All API routes now require authentication
+
 # [1.5.0](https://github.com/Stelth2000-Inc/NightScoutMongoBackupSite/compare/v1.4.0...v1.5.0) (2025-12-13)
 
 
