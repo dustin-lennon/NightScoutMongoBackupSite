@@ -68,8 +68,11 @@ jobs:
           # AWS S3 secrets - passed directly from GitHub secrets
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+          # Python Backup API authentication
+          PYTHON_BACKUP_API_KEY: ${{ secrets.PYTHON_BACKUP_API_KEY }}
         run: |
-          ssh ${LINODE_USER}@${LINODE_HOST} "DEPLOY_PATH='${DEPLOY_PATH}' NEXTAUTH_SECRET='${NEXTAUTH_SECRET}' NEXTAUTH_URL='${NEXTAUTH_URL}' DISCORD_CLIENT_ID='${DISCORD_CLIENT_ID}' DISCORD_CLIENT_SECRET='${DISCORD_CLIENT_SECRET}' ALLOWED_DISCORD_USER_ID='${ALLOWED_DISCORD_USER_ID}' AWS_ACCESS_KEY_ID='${AWS_ACCESS_KEY_ID}' AWS_SECRET_ACCESS_KEY='${AWS_SECRET_ACCESS_KEY}' bash -s" << 'EOF'
+          ssh ${LINODE_USER}@${LINODE_HOST} "DEPLOY_PATH='${DEPLOY_PATH}' NEXTAUTH_SECRET='${NEXTAUTH_SECRET}' NEXTAUTH_URL='${NEXTAUTH_URL}' DISCORD_CLIENT_ID='${DISCORD_CLIENT_ID}' DISCORD_CLIENT_SECRET='${DISCORD_CLIENT_SECRET}' ALLOWED_DISCORD_USER_ID='${ALLOWED_DISCORD_USER_ID}' AWS_ACCESS_KEY_ID='${AWS_ACCESS_KEY_ID}' AWS_SECRET_ACCESS_KEY='${AWS_SECRET_ACCESS_KEY}' PYTHON_BACKUP_API_KEY='${PYTHON_BACKUP_API_KEY}' bash -s" << 'EOF'
           set -e
 
           echo "📦 Starting deployment to ${DEPLOY_PATH}..."
@@ -133,6 +136,7 @@ jobs:
           export ALLOWED_DISCORD_USER_ID="${ALLOWED_DISCORD_USER_ID}"
           export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}"
           export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}"
+          export PYTHON_BACKUP_API_KEY="${PYTHON_BACKUP_API_KEY}"
 
           echo "✅ Environment variables exported for PM2"
           echo "   NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:+[SET]}${NEXTAUTH_SECRET:-[NOT SET]}"
@@ -142,6 +146,7 @@ jobs:
           echo "   ALLOWED_DISCORD_USER_ID: ${ALLOWED_DISCORD_USER_ID:+[SET]}${ALLOWED_DISCORD_USER_ID:-[NOT SET]}"
           echo "   AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:+[SET]}${AWS_ACCESS_KEY_ID:-[NOT SET]}"
           echo "   AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:+[SET]}${AWS_SECRET_ACCESS_KEY:-[NOT SET]}"
+          echo "   PYTHON_BACKUP_API_KEY: ${PYTHON_BACKUP_API_KEY:+[SET]}${PYTHON_BACKUP_API_KEY:-[NOT SET]}"
 
           # Verify variables are actually set (non-empty)
           if [ -z "${NEXTAUTH_SECRET}" ]; then
@@ -170,6 +175,10 @@ jobs:
           fi
           if [ -z "${AWS_SECRET_ACCESS_KEY}" ]; then
             echo "❌ ERROR: AWS_SECRET_ACCESS_KEY is not set!"
+            exit 1
+          fi
+          if [ -z "${PYTHON_BACKUP_API_KEY}" ]; then
+            echo "❌ ERROR: PYTHON_BACKUP_API_KEY is not set!"
             exit 1
           fi
 
@@ -216,6 +225,11 @@ jobs:
               echo "✅ AWS_SECRET_ACCESS_KEY is set in PM2 process"
             else
               echo "⚠️  AWS_SECRET_ACCESS_KEY not found in PM2 process environment"
+            fi
+            if echo "$PM2_ENV" | grep -q "PYTHON_BACKUP_API_KEY"; then
+              echo "✅ PYTHON_BACKUP_API_KEY is set in PM2 process"
+            else
+              echo "⚠️  PYTHON_BACKUP_API_KEY not found in PM2 process environment"
             fi
           else
             echo "⚠️  Could not retrieve PM2 environment (this is okay if process just started)"
