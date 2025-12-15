@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 
 // Use environment variable if set, otherwise use relative URL (for same-domain setup)
 const PYTHON_API_URL = process.env.PYTHON_BACKUP_API_URL || "";
+const PYTHON_API_KEY = process.env.PYTHON_BACKUP_API_KEY || "";
 
 // Security: Validate URL to prevent SSRF attacks
 function isValidBackupUrl(url: string): boolean {
@@ -74,11 +75,19 @@ export async function POST() {
       );
     }
 
+    // Build headers with API key authentication
+    const headers: HeadersInit = {
+      "Content-Type": "application/json"
+    };
+    
+    // Add API key authentication if configured
+    if (PYTHON_API_KEY) {
+      headers["Authorization"] = `Bearer ${PYTHON_API_KEY}`;
+    }
+
     const response = await fetch(fullUrl, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      }
+      headers
     });
 
     if (!response.ok) {
