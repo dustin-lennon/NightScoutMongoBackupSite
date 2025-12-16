@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render as rtlRender, screen, waitFor } from "@testing-library/react";
+import { render as rtlRender, screen, waitFor, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import PM2Status from "@/components/pm2-status";
 
@@ -41,10 +41,17 @@ describe("PM2Status", () => {
     vi.restoreAllMocks();
   });
 
-  it("renders the Discord Bot Status header", () => {
+  it("renders the Discord Bot Status header", async () => {
     mockFetch.mockResolvedValueOnce(createPM2StatusResponse([]));
 
-    render(<PM2Status />);
+    await act(async () => {
+      render(<PM2Status />);
+    });
+
+    // Wait for the fetch to complete
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalled();
+    });
 
     expect(screen.getByText("Discord Bot Status")).toBeInTheDocument();
   });
@@ -275,4 +282,5 @@ describe("PM2Status", () => {
     }, { timeout: TEST_TIMEOUT });
   });
 });
+
 
