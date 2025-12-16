@@ -1,3 +1,10 @@
+## [2.0.5](https://github.com/Stelth2000-Inc/NightScoutMongoBackupSite/compare/v2.0.4...v2.0.5) (2025-12-16)
+
+
+### Bug Fixes
+
+* **s3:** add fallback for AWS credentials ([2755d56](https://github.com/Stelth2000-Inc/NightScoutMongoBackupSite/commit/2755d560a4d9ed13c0b0df5b02b69e6a1a4482c1)), closes [#72](https://github.com/Stelth2000-Inc/NightScoutMongoBackupSite/issues/72)
+
 ## [2.0.4](https://github.com/Stelth2000-Inc/NightScoutMongoBackupSite/compare/v2.0.3...v2.0.4) (2025-12-15)
 
 
