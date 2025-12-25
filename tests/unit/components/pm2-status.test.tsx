@@ -57,12 +57,12 @@ describe("PM2Status", () => {
   });
 
   it("displays empty state when no bot processes found", async () => {
-    mockFetch.mockResolvedValueOnce(createErrorResponse("No Discord bot process found in PM2"));
+    mockFetch.mockResolvedValueOnce(createPM2StatusResponse([]));
 
     render(<PM2Status />);
 
     await waitFor(() => {
-      expect(screen.getByText(/no discord bot process found in pm2/i)).toBeInTheDocument();
+      expect(screen.getByText(/no discord bot processes found in pm2/i)).toBeInTheDocument();
     }, { timeout: TEST_TIMEOUT });
   });
 
@@ -92,7 +92,7 @@ describe("PM2Status", () => {
     }, { timeout: TEST_TIMEOUT });
   });
 
-  it("formats uptime correctly", async () => {
+  it("formats uptime correctly with days", async () => {
     const mockProcess = {
       name: "test-bot",
       status: "online",
@@ -115,6 +115,75 @@ describe("PM2Status", () => {
     }, { timeout: TEST_TIMEOUT });
   });
 
+  it("formats uptime correctly with hours only", async () => {
+    const mockProcess = {
+      name: "test-bot",
+      status: "online",
+      uptime: 3661, // 1 hour, 1 minute, 1 second
+      memory: 64,
+      cpu: 1.0,
+      restarts: 0,
+      pm_id: 0,
+    };
+
+    mockFetch.mockResolvedValueOnce(createPM2StatusResponse([mockProcess]));
+
+    render(<PM2Status />);
+
+    await waitFor(() => {
+      expect(screen.getByText("test-bot")).toBeInTheDocument();
+      // Should display formatted uptime (1h 1m 1s)
+      const uptimeElement = screen.getByText(/1h 1m 1s/i);
+      expect(uptimeElement).toBeInTheDocument();
+    }, { timeout: TEST_TIMEOUT });
+  });
+
+  it("formats uptime correctly with minutes only", async () => {
+    const mockProcess = {
+      name: "test-bot",
+      status: "online",
+      uptime: 61, // 1 minute, 1 second
+      memory: 64,
+      cpu: 1.0,
+      restarts: 0,
+      pm_id: 0,
+    };
+
+    mockFetch.mockResolvedValueOnce(createPM2StatusResponse([mockProcess]));
+
+    render(<PM2Status />);
+
+    await waitFor(() => {
+      expect(screen.getByText("test-bot")).toBeInTheDocument();
+      // Should display formatted uptime (1m 1s)
+      const uptimeElement = screen.getByText(/1m 1s/i);
+      expect(uptimeElement).toBeInTheDocument();
+    }, { timeout: TEST_TIMEOUT });
+  });
+
+  it("formats uptime correctly with seconds only", async () => {
+    const mockProcess = {
+      name: "test-bot",
+      status: "online",
+      uptime: 5, // 5 seconds
+      memory: 64,
+      cpu: 1.0,
+      restarts: 0,
+      pm_id: 0,
+    };
+
+    mockFetch.mockResolvedValueOnce(createPM2StatusResponse([mockProcess]));
+
+    render(<PM2Status />);
+
+    await waitFor(() => {
+      expect(screen.getByText("test-bot")).toBeInTheDocument();
+      // Should display formatted uptime (5s)
+      const uptimeElement = screen.getByText(/5s/i);
+      expect(uptimeElement).toBeInTheDocument();
+    }, { timeout: TEST_TIMEOUT });
+  });
+
   it("displays error message when API fails", async () => {
     mockFetch.mockRejectedValueOnce(new Error("Network error"));
 
@@ -122,6 +191,29 @@ describe("PM2Status", () => {
 
     await waitFor(() => {
       expect(screen.getByText(/network error/i)).toBeInTheDocument();
+    }, { timeout: TEST_TIMEOUT });
+  });
+
+  it("displays error message when API returns error response", async () => {
+    mockFetch.mockResolvedValueOnce(createErrorResponse("Failed to load PM2 status"));
+
+    render(<PM2Status />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/failed to load pm2 status/i)).toBeInTheDocument();
+    }, { timeout: TEST_TIMEOUT });
+  });
+
+  it("displays default error message when API returns error without message", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({}),
+    } as Response);
+
+    render(<PM2Status />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/failed to load pm2 status/i)).toBeInTheDocument();
     }, { timeout: TEST_TIMEOUT });
   });
 
@@ -207,7 +299,7 @@ describe("PM2Status", () => {
     }, { timeout: TEST_TIMEOUT });
   });
 
-  it.skip("displays status badge with correct color for stopped status", async () => {
+  it("displays status badge with correct color for stopped status", async () => {
     const mockProcess = {
       name: "test-bot",
       status: "stopped",
@@ -225,7 +317,73 @@ describe("PM2Status", () => {
     await waitFor(() => {
       const statusBadge = screen.getByText("stopped");
       expect(statusBadge).toBeInTheDocument();
-      expect(statusBadge).toHaveClass("bg-red-950/40");
+      expect(statusBadge).toHaveClass("bg-red-50");
+    }, { timeout: TEST_TIMEOUT });
+  });
+
+  it("displays status badge with correct color for errored status", async () => {
+    const mockProcess = {
+      name: "test-bot",
+      status: "errored",
+      uptime: 0,
+      memory: 0,
+      cpu: 0,
+      restarts: 0,
+      pm_id: 0,
+    };
+
+    mockFetch.mockResolvedValueOnce(createPM2StatusResponse([mockProcess]));
+
+    render(<PM2Status />);
+
+    await waitFor(() => {
+      const statusBadge = screen.getByText("errored");
+      expect(statusBadge).toBeInTheDocument();
+      expect(statusBadge).toHaveClass("bg-red-100");
+    }, { timeout: TEST_TIMEOUT });
+  });
+
+  it("displays status badge with correct color for restarting status", async () => {
+    const mockProcess = {
+      name: "test-bot",
+      status: "restarting",
+      uptime: 0,
+      memory: 0,
+      cpu: 0,
+      restarts: 0,
+      pm_id: 0,
+    };
+
+    mockFetch.mockResolvedValueOnce(createPM2StatusResponse([mockProcess]));
+
+    render(<PM2Status />);
+
+    await waitFor(() => {
+      const statusBadge = screen.getByText("restarting");
+      expect(statusBadge).toBeInTheDocument();
+      expect(statusBadge).toHaveClass("bg-yellow-50");
+    }, { timeout: TEST_TIMEOUT });
+  });
+
+  it("displays status badge with correct color for unknown status", async () => {
+    const mockProcess = {
+      name: "test-bot",
+      status: "unknown-status",
+      uptime: 0,
+      memory: 0,
+      cpu: 0,
+      restarts: 0,
+      pm_id: 0,
+    };
+
+    mockFetch.mockResolvedValueOnce(createPM2StatusResponse([mockProcess]));
+
+    render(<PM2Status />);
+
+    await waitFor(() => {
+      const statusBadge = screen.getByText("unknown-status");
+      expect(statusBadge).toBeInTheDocument();
+      expect(statusBadge).toHaveClass("bg-slate-50");
     }, { timeout: TEST_TIMEOUT });
   });
 
@@ -250,7 +408,7 @@ describe("PM2Status", () => {
     }, { timeout: TEST_TIMEOUT });
   });
 
-  it.skip("displays multiple bot processes", async () => {
+  it("displays multiple bot processes", async () => {
     const mockProcesses = [
       {
         name: "bot-1",
@@ -279,6 +437,29 @@ describe("PM2Status", () => {
     await waitFor(() => {
       expect(screen.getByText("bot-1")).toBeInTheDocument();
       expect(screen.getByText("bot-2")).toBeInTheDocument();
+    }, { timeout: TEST_TIMEOUT });
+  });
+
+  it("handles empty processes array", async () => {
+    mockFetch.mockResolvedValueOnce(createPM2StatusResponse([]));
+
+    render(<PM2Status />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/no discord bot processes found in pm2/i)).toBeInTheDocument();
+    }, { timeout: TEST_TIMEOUT });
+  });
+
+  it("handles null processes in response", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ processes: null }),
+    } as Response);
+
+    render(<PM2Status />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/no discord bot processes found in pm2/i)).toBeInTheDocument();
     }, { timeout: TEST_TIMEOUT });
   });
 });
