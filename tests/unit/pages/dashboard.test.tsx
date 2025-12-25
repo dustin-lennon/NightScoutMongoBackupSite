@@ -133,7 +133,7 @@ describe("DashboardPage", () => {
     // Check for main container
     const main = screen.getByRole("main");
     expect(main).toBeInTheDocument();
-    expect(main).toHaveClass("min-h-screen");
+    expect(main).toHaveClass("px-6", "py-10", "sm:px-10");
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalled();

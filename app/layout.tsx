@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Providers from "./providers";
 import { TopBar } from "../components/top-bar";
+import { Footer } from "../components/footer";
 
 export const metadata: Metadata = {
   title: "Nightscout Backup Dashboard",
@@ -15,10 +16,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="min-h-screen bg-white text-slate-900 dark:bg-background dark:text-slate-50">
+      <body className="flex min-h-screen flex-col bg-white text-slate-900 dark:bg-background dark:text-slate-50">
         <Providers>
           <TopBar />
-          {children}
+          <div className="flex-1">{children}</div>
+          <Footer />
         </Providers>
       </body>
     </html>
