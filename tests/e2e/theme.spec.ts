@@ -47,13 +47,38 @@ test.describe("Theme Toggle", () => {
     await expect(darkButton).toBeVisible();
     await expect(systemButton).toBeVisible();
 
+    // Wait for component to mount (useTheme needs to hydrate)
+    await page.waitForTimeout(200);
+
+    // Helper function to check if button is active (has shadow-sm which is only on active buttons)
+    const isActive = async (button: ReturnType<typeof page.getByRole>) => {
+      const className = await button.getAttribute("class");
+      return className?.includes("shadow-sm") ?? false;
+    };
+
     // Click dark theme
     await darkButton.click();
-    await expect(darkButton).toHaveClass(/bg-slate-100/);
+    await page.waitForTimeout(100);
+    expect(await isActive(darkButton)).toBe(true);
+    // Verify only dark is active
+    expect(await isActive(lightButton)).toBe(false);
+    expect(await isActive(systemButton)).toBe(false);
 
     // Click light theme
     await lightButton.click();
-    await expect(lightButton).toHaveClass(/bg-slate-100/);
+    await page.waitForTimeout(100);
+    expect(await isActive(lightButton)).toBe(true);
+    // Verify only light is active
+    expect(await isActive(darkButton)).toBe(false);
+    expect(await isActive(systemButton)).toBe(false);
+
+    // Click system theme
+    await systemButton.click();
+    await page.waitForTimeout(100);
+    expect(await isActive(systemButton)).toBe(true);
+    // Verify only system is active
+    expect(await isActive(lightButton)).toBe(false);
+    expect(await isActive(darkButton)).toBe(false);
   });
 });
 

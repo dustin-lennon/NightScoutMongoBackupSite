@@ -1,6 +1,7 @@
 "use client";
 
 import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
 
 const themes = [
   { id: "light", label: "Light" },
@@ -10,11 +11,21 @@ const themes = [
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  // Avoid hydration mismatch by only showing after mount
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Determine the active theme: use theme if available, otherwise default to "system"
+  const activeTheme = mounted ? (theme || "system") : null;
 
   return (
     <div className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-slate-100/80 p-0.5 text-xs text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300">
       {themes.map((t) => {
-        const isActive = theme === t.id || (!theme && t.id === "system");
+        // Only mark as active if it exactly matches the active theme
+        const isActive = activeTheme === t.id;
         return (
           <button
             key={t.id}
